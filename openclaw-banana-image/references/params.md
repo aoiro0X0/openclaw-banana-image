@@ -20,6 +20,10 @@ The runner returns JSON with:
 
 - `mode`
 - `output_files`
+- `paths` (same absolute paths as `output_files`, for OpenClaw-style consumers)
+- `media` with `mediaUrls` and `mediaUrl` for OpenClaw outbound delivery
+- `mediaUrls`
+- `mediaUrl`
 - `text_output`
 - `request_summary`
 - `repro_info`

@@ -410,6 +410,14 @@ export function buildReproInfo(request, responsePayload) {
   };
 }
 
+export function buildOpenClawMedia(outputFiles) {
+  const mediaUrls = [...outputFiles];
+  return {
+    mediaUrls,
+    ...(mediaUrls[0] ? { mediaUrl: mediaUrls[0] } : {}),
+  };
+}
+
 export function parseModelRef(modelRef) {
   const normalized = normalizeModelName(modelRef);
   const slashIndex = normalized.indexOf('/');
@@ -476,6 +484,10 @@ export async function runWorkflow(request, {
   const result = {
     mode: request.mode,
     output_files: [],
+    paths: [],
+    media: { mediaUrls: [] },
+    mediaUrls: [],
+    mediaUrl: null,
     text_output: [],
     request_summary: {},
     repro_info: {},
@@ -510,6 +522,10 @@ export async function runWorkflow(request, {
       mode: request.mode,
       fetchImpl,
     });
+    result.paths = [...result.output_files];
+    result.media = buildOpenClawMedia(result.output_files);
+    result.mediaUrls = result.media.mediaUrls;
+    result.mediaUrl = result.media.mediaUrl ?? null;
     result.request_summary = buildRequestSummary(request, responsePayload);
     result.repro_info = buildReproInfo(request, responsePayload);
     return result;
@@ -629,3 +645,4 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
   const exitCode = await main();
   process.exit(exitCode);
 }
+

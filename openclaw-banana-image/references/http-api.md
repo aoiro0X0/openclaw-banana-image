@@ -69,7 +69,7 @@ Each image item may include:
 - `data`
 - `url`
 
-Text parts are collected from the same Vertex AI response parts and returned as `text_output`.
+Text parts are collected from the same Vertex AI response parts and returned as `text_output`. After saving generated files locally, the runner also returns OpenClaw-compatible media fields: `media.mediaUrls`, top-level `mediaUrls`, and top-level `mediaUrl`.
 
 ## Error Handling
 
@@ -78,3 +78,4 @@ The runner preserves upstream response snippets and adds clearer messages for:
 - `403`: API key is valid in format but lacks permission to access the model or endpoint
 - `404`: base URL or `generateContent` path is wrong
 - other HTTP failures: returned as-is with the upstream response body snippet
+

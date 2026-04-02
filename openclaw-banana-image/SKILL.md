@@ -7,7 +7,7 @@ description: Install and run an OpenClaw banana image skill for Nano Banana imag
 
 ## Overview
 
-This skill routes Nano Banana image generation and editing requests for OpenClaw. It classifies the task, collects local file inputs, resolves `ZENMUX_API_KEY` or `GEMINI_API_KEY`, calls the Zenmux Vertex AI `generateContent` endpoint, and saves image outputs into the workspace.
+This skill routes Nano Banana image generation and editing requests for OpenClaw. It classifies the task, collects local file inputs, resolves `ZENMUX_API_KEY` or `GEMINI_API_KEY`, calls the Zenmux Vertex AI `generateContent` endpoint, saves image outputs into the workspace, and returns OpenClaw-compatible media fields so the host can send the generated image back to chat.
 
 ## GitHub Install
 
@@ -63,7 +63,7 @@ Do not use it for vector assets, SVG/logo systems, or code-native graphics.
    - explicit background-replacement request -> `background-replace`
 3. Resolve the API key from `ZENMUX_API_KEY` or `GEMINI_API_KEY`; if both are missing, prompt for a one-time key.
 4. Run `scripts/banana-image.mjs` with the task, local paths, and API settings.
-5. Return the saved file paths plus the request summary and repro info.
+5. Return the saved file paths plus OpenClaw-compatible `media` / `mediaUrls` fields, along with the request summary and repro info.
 
 ## API Key Rules
 
@@ -75,6 +75,7 @@ Do not use it for vector assets, SVG/logo systems, or code-native graphics.
 
 - Prefer local filesystem paths for input images, masks, and references.
 - Default outputs go to `./output/banana` relative to the current workspace.
+- The runner also returns OpenClaw-compatible `media.mediaUrls`, `mediaUrls`, and `mediaUrl` fields that point at the generated files.
 - Never overwrite an existing output file; create a suffixed filename instead.
 
 ## Commands
@@ -92,3 +93,6 @@ Helpful references:
 - HTTP request and response shape: `references/http-api.md`
 - Nano Banana provider notes: `references/zenmux-nano-banana.md`
 - GitHub install guidance: `references/github-install.md`
+
+
+
