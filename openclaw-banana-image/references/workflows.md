@@ -9,10 +9,10 @@
 
 ## Example Triggers
 
-- `生成一张香蕉广告海报，偏热带商业摄影` -> `txt2img`
-- `把这张图改成更亮一点的电商质感` -> `img2img`
-- `只改掉杯子上的 logo，别动其他区域` + mask -> `inpaint`
-- `给这张产品图换背景，换成纯白摄影棚` -> `background-replace`
+- `Create a tropical banana ad poster with a premium studio-photography look` -> `txt2img`
+- `Restyle this product image to look brighter and more commercial` -> `img2img`
+- `Only replace the logo on the cup and keep everything else the same` + mask -> `inpaint`
+- `Replace the background of this product shot with a clean white studio scene` -> `background-replace`
 
 ## Conservative Routing Rule
 

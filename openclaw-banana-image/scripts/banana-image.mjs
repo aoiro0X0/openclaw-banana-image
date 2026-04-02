@@ -7,12 +7,14 @@ import { pathToFileURL } from 'node:url';
 import readline from 'node:readline/promises';
 
 export const DEFAULT_BASE_URL = 'https://zenmux.ai/api/vertex-ai';
-export const DEFAULT_MODEL = 'google/gemini-3.1-flash-image-preview';
+export const DEFAULT_MODEL = 'google/gemini-3-pro-image-preview';
 export const DEFAULT_API_VERSION = 'v1';
-export const API_KEY_ENV_NAMES = ['ZENMUX_API_KEY'];
+export const API_KEY_ENV_NAMES = ['ZENMUX_API_KEY', 'GEMINI_API_KEY'];
+export const BASE_URL_ENV_NAMES = ['ZENMUX_BASE_URL', 'GOOGLE_GEMINI_BASE_URL'];
+export const MODEL_ENV_NAMES = ['OPENCLAW_BANANA_MODEL', 'ZENMUX_IMAGE_MODEL'];
 
-const CN_BACKGROUND_WORD = '背景';
-const CN_BACKGROUND_REPLACE_VERBS = ['换', '替换', '抠图'];
+const CN_BACKGROUND_WORD = '\u80cc\u666f';
+const CN_BACKGROUND_REPLACE_VERBS = ['\u6362', '\u66ff\u6362', '\u62a0\u56fe'];
 const EN_BACKGROUND_REPLACE_PATTERNS = [
   'replace background',
   'background replace',
@@ -42,14 +44,62 @@ export function classifyMode(task, { inputImagePath, maskPath } = {}) {
   return 'txt2img';
 }
 
-export function resolveApiKeyFromEnv(env = process.env) {
-  for (const envName of API_KEY_ENV_NAMES) {
+export function resolveFirstEnv(envNames, env = process.env) {
+  for (const envName of envNames) {
     const value = env[envName];
     if (typeof value === 'string' && value.trim()) {
       return value.trim();
     }
   }
   return null;
+}
+
+export function normalizeModelName(model) {
+  const trimmed = model.trim();
+  if (!trimmed) {
+    return DEFAULT_MODEL;
+  }
+  return trimmed.includes('/') ? trimmed : `google/${trimmed}`;
+}
+
+export function isImageCapableModel(model) {
+  return model.toLowerCase().includes('image');
+}
+
+export function resolveModel(model, env = process.env) {
+  if (typeof model === 'string' && model.trim()) {
+    return normalizeModelName(model);
+  }
+
+  const explicitImageModel = resolveFirstEnv(MODEL_ENV_NAMES, env);
+  if (explicitImageModel) {
+    return normalizeModelName(explicitImageModel);
+  }
+
+  const geminiModel = resolveFirstEnv(['GEMINI_MODEL'], env);
+  if (geminiModel && isImageCapableModel(geminiModel)) {
+    return normalizeModelName(geminiModel);
+  }
+
+  return DEFAULT_MODEL;
+}
+
+export function resolveBaseUrl(baseUrl, env = process.env) {
+  if (typeof baseUrl === 'string' && baseUrl.trim()) {
+    return baseUrl.trim().replace(/\/+$/, '');
+  }
+  return (resolveFirstEnv(BASE_URL_ENV_NAMES, env) ?? DEFAULT_BASE_URL).replace(/\/+$/, '');
+}
+
+export function resolveApiVersion(apiVersion) {
+  if (typeof apiVersion === 'string' && apiVersion.trim()) {
+    return apiVersion.trim();
+  }
+  return DEFAULT_API_VERSION;
+}
+
+export function resolveApiKeyFromEnv(env = process.env) {
+  return resolveFirstEnv(API_KEY_ENV_NAMES, env);
 }
 
 export async function resolveApiKey(apiKey, { promptForApiKey, env = process.env } = {}) {
@@ -61,7 +111,7 @@ export async function resolveApiKey(apiKey, { promptForApiKey, env = process.env
     return envApiKey;
   }
   if (!promptForApiKey) {
-    throw new Error('API key is required for this request.');
+    throw new Error('API key is required for this request. Set ZENMUX_API_KEY or GEMINI_API_KEY.');
   }
   const prompted = (await promptForApiKey('Enter Banana API key for this request: ')).trim();
   if (!prompted) {
@@ -93,8 +143,8 @@ export async function buildWorkflowRequest({
   steps,
   seed,
   outputDir,
-  model = DEFAULT_MODEL,
-  apiVersion = DEFAULT_API_VERSION,
+  model,
+  apiVersion,
   promptForApiKey,
   env = process.env,
 }) {
@@ -118,10 +168,37 @@ export async function buildWorkflowRequest({
     size: size ?? null,
     steps: steps ?? null,
     seed: seed ?? null,
-    model,
-    apiVersion,
+    model: resolveModel(model, env),
+    apiVersion: resolveApiVersion(apiVersion),
     outputDir: outputDir ? resolve(outputDir) : resolve(process.cwd(), 'output', 'banana'),
   };
+}
+
+export function guessMimeType(filePath) {
+  switch (extname(filePath).toLowerCase()) {
+    case '.jpg':
+    case '.jpeg':
+      return 'image/jpeg';
+    case '.webp':
+      return 'image/webp';
+    case '.gif':
+      return 'image/gif';
+    default:
+      return 'image/png';
+  }
+}
+
+export function extensionForMimeType(mimeType) {
+  switch ((mimeType ?? '').toLowerCase()) {
+    case 'image/jpeg':
+      return '.jpg';
+    case 'image/webp':
+      return '.webp';
+    case 'image/gif':
+      return '.gif';
+    default:
+      return '.png';
+  }
 }
 
 export async function encodeFile(filePath) {
@@ -129,36 +206,63 @@ export async function encodeFile(filePath) {
   return {
     path: filePath,
     filename: basename(filePath),
+    mimeType: guessMimeType(filePath),
     contentBase64: Buffer.from(bytes).toString('base64'),
   };
 }
 
-export async function buildPayload(request) {
-  const payload = {
-    task: request.task,
-    mode: request.mode,
-    model: request.model,
-    api_version: request.apiVersion,
-  };
-  if (request.size) {
-    payload.size = request.size;
+export function buildPromptText(request) {
+  const parts = [request.task.trim()];
+  if (request.mode === 'inpaint') {
+    parts.push('Use the provided mask image as an edit mask. Only change the masked region and preserve everything else.');
   }
-  if (request.steps !== null) {
-    payload.steps = request.steps;
-  }
-  if (request.seed !== null) {
-    payload.seed = request.seed;
-  }
-  if (request.inputImagePath) {
-    payload.input_image = await encodeFile(request.inputImagePath);
-  }
-  if (request.maskPath) {
-    payload.mask_image = await encodeFile(request.maskPath);
+  if (request.mode === 'background-replace') {
+    parts.push('Replace the background while preserving the main subject.');
   }
   if (request.referenceImagePaths.length > 0) {
-    payload.reference_images = await Promise.all(request.referenceImagePaths.map((filePath) => encodeFile(filePath)));
+    parts.push('Use the reference images for style and composition guidance.');
   }
-  return payload;
+  return parts.join('\n\n');
+}
+
+export function buildInlineDataPart(file) {
+  return {
+    inlineData: {
+      mimeType: file.mimeType,
+      data: file.contentBase64,
+    },
+  };
+}
+
+export async function buildPayload(request) {
+  const parts = [{ text: buildPromptText(request) }];
+
+  if (request.inputImagePath) {
+    parts.push(buildInlineDataPart(await encodeFile(request.inputImagePath)));
+  }
+  for (const referencePath of request.referenceImagePaths) {
+    parts.push(buildInlineDataPart(await encodeFile(referencePath)));
+  }
+  if (request.maskPath) {
+    parts.push(buildInlineDataPart(await encodeFile(request.maskPath)));
+  }
+
+  const generationConfig = {
+    responseModalities: ['TEXT', 'IMAGE'],
+  };
+  if (request.seed !== null) {
+    generationConfig.seed = request.seed;
+  }
+
+  return {
+    contents: [
+      {
+        role: 'user',
+        parts,
+      },
+    ],
+    generationConfig,
+  };
 }
 
 export function uniqueOutputPath(outputDir, preferredName) {
@@ -172,6 +276,24 @@ export function uniqueOutputPath(outputDir, preferredName) {
     index += 1;
   }
   return candidate;
+}
+
+export function extractResponseParts(responsePayload) {
+  const parts = [];
+
+  if (Array.isArray(responsePayload.parts)) {
+    parts.push(...responsePayload.parts);
+  }
+
+  if (Array.isArray(responsePayload.candidates)) {
+    for (const candidate of responsePayload.candidates) {
+      if (Array.isArray(candidate?.content?.parts)) {
+        parts.push(...candidate.content.parts);
+      }
+    }
+  }
+
+  return parts;
 }
 
 export function extractImageItems(responsePayload) {
@@ -189,7 +311,15 @@ export function extractImageItems(responsePayload) {
       });
     }
   }
-  return [];
+
+  return extractResponseParts(responsePayload).filter((part) => part.inlineData || part.inline_data);
+}
+
+export function extractTextOutput(responsePayload) {
+  return extractResponseParts(responsePayload)
+    .map((part) => part.text)
+    .filter((value) => typeof value === 'string' && value.trim())
+    .map((value) => value.trim());
 }
 
 export function guessFilename(item, index, mode) {
@@ -207,10 +337,17 @@ export function guessFilename(item, index, mode) {
       // Fall back to a generated filename if the URL is malformed.
     }
   }
-  return `${mode}-${index}.png`;
+
+  const inlineMimeType = item.inlineData?.mimeType ?? item.inline_data?.mimeType;
+  return `${mode}-${index}${extensionForMimeType(inlineMimeType)}`;
 }
 
 export async function imageBytesFromItem(item, { fetchImpl }) {
+  const inlineData = item.inlineData ?? item.inline_data;
+  if (typeof inlineData?.data === 'string' && inlineData.data.length > 0) {
+    return Buffer.from(inlineData.data, 'base64');
+  }
+
   for (const key of ['b64_json', 'contentBase64', 'base64', 'data']) {
     const value = item[key];
     if (typeof value === 'string' && value.length > 0) {
@@ -273,15 +410,46 @@ export function buildReproInfo(request, responsePayload) {
   };
 }
 
+export function parseModelRef(modelRef) {
+  const normalized = normalizeModelName(modelRef);
+  const slashIndex = normalized.indexOf('/');
+  return {
+    provider: normalized.slice(0, slashIndex),
+    model: normalized.slice(slashIndex + 1),
+  };
+}
+
+export function buildGenerateContentEndpoint(modelRef, apiVersion = DEFAULT_API_VERSION) {
+  const { provider, model } = parseModelRef(modelRef);
+  return `${apiVersion}/publishers/${encodeURIComponent(provider)}/models/${encodeURIComponent(model)}:generateContent`;
+}
+
+export function joinUrl(baseUrl, endpoint) {
+  return `${baseUrl.replace(/\/+$/, '')}/${endpoint.replace(/^\/+/, '')}`;
+}
+
+export function formatHttpError(status, url, message) {
+  const trimmed = (message || 'request failed').trim();
+  if (status === 403) {
+    return `HTTP 403: access denied for ${url}. Confirm the API key is valid and has access to this model. Raw response: ${trimmed}`;
+  }
+  if (status === 404) {
+    return `HTTP 404: endpoint not found for ${url}. Confirm the base URL and Vertex AI generateContent path. Raw response: ${trimmed}`;
+  }
+  return `HTTP ${status}: ${trimmed}`;
+}
+
 export async function invokeApi(request, {
   baseUrl = DEFAULT_BASE_URL,
-  endpoint = '/v1/images',
+  endpoint,
   apiKeyHeader = 'Authorization',
   apiKeyPrefix = 'Bearer ',
   fetchImpl = fetch,
 }) {
   const payload = await buildPayload(request);
-  const response = await fetchImpl(new URL(endpoint, baseUrl).toString(), {
+  const targetEndpoint = endpoint ? endpoint.replace(/^\/+/, '') : buildGenerateContentEndpoint(request.model, request.apiVersion);
+  const targetUrl = joinUrl(resolveBaseUrl(baseUrl), targetEndpoint);
+  const response = await fetchImpl(targetUrl, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -293,14 +461,14 @@ export async function invokeApi(request, {
 
   if (!response.ok) {
     const message = await response.text();
-    throw new Error(`HTTP ${response.status}: ${message || 'request failed'}`);
+    throw new Error(formatHttpError(response.status, targetUrl, message));
   }
   return response.json();
 }
 
 export async function runWorkflow(request, {
   baseUrl = DEFAULT_BASE_URL,
-  endpoint = '/v1/images',
+  endpoint,
   apiKeyHeader = 'Authorization',
   apiKeyPrefix = 'Bearer ',
   fetchImpl = fetch,
@@ -308,6 +476,7 @@ export async function runWorkflow(request, {
   const result = {
     mode: request.mode,
     output_files: [],
+    text_output: [],
     request_summary: {},
     repro_info: {},
     raw_response_excerpt: '',
@@ -323,6 +492,7 @@ export async function runWorkflow(request, {
       fetchImpl,
     });
     result.raw_response_excerpt = summarizeResponse(responsePayload);
+    result.text_output = extractTextOutput(responsePayload);
 
     if (typeof responsePayload.error === 'string' && responsePayload.error.trim()) {
       result.error = responsePayload.error.trim();
@@ -355,10 +525,10 @@ export function parseCliArgs(argv) {
     allowPositionals: true,
     options: {
       task: { type: 'string' },
-      'base-url': { type: 'string', default: DEFAULT_BASE_URL },
-      endpoint: { type: 'string', default: '/v1/images' },
-      model: { type: 'string', default: DEFAULT_MODEL },
-      'api-version': { type: 'string', default: DEFAULT_API_VERSION },
+      'base-url': { type: 'string' },
+      endpoint: { type: 'string' },
+      model: { type: 'string' },
+      'api-version': { type: 'string' },
       'api-key': { type: 'string' },
       'input-image-path': { type: 'string' },
       'mask-path': { type: 'string' },
@@ -383,23 +553,25 @@ export function helpText() {
     `  base URL: ${DEFAULT_BASE_URL}`,
     `  model: ${DEFAULT_MODEL}`,
     `  api version: ${DEFAULT_API_VERSION}`,
-    `  API key env: ${API_KEY_ENV_NAMES.join(', ')}`,
+    `  API key envs: ${API_KEY_ENV_NAMES.join(', ')}`,
+    `  base URL envs: ${BASE_URL_ENV_NAMES.join(', ')}`,
+    `  image model envs: ${MODEL_ENV_NAMES.join(', ')}, GEMINI_MODEL (image models only)`,
     '',
     'Usage:',
     '  node ./scripts/banana-image.mjs --task "Create a banana ad image"',
     '',
     'Options:',
     '  --task                  Natural-language task description.',
-    '  --base-url              Banana HTTP API base URL.',
-    '  --endpoint              API endpoint path. Default: /v1/images',
-    '  --model                 Model name. Default: google/gemini-3.1-flash-image-preview',
+    '  --base-url              Vertex AI base URL. Defaults to GOOGLE_GEMINI_BASE_URL or the built-in Zenmux URL.',
+    '  --endpoint              Override the generateContent endpoint path.',
+    '  --model                 Image-capable model name. Defaults to google/gemini-3-pro-image-preview.',
     '  --api-version           API version string. Default: v1',
-    '  --api-key               One-time API key. If omitted, the script checks ZENMUX_API_KEY and then prompts.',
+    '  --api-key               One-time API key. If omitted, the script checks ZENMUX_API_KEY, then GEMINI_API_KEY, then prompts.',
     '  --input-image-path      Local input image path.',
     '  --mask-path             Local mask image path for inpaint.',
     '  --reference-image-path  Repeatable local reference image path.',
-    '  --size                  Optional size, such as 1024x1024.',
-    '  --steps                 Optional inference steps.',
+    '  --size                  Optional size hint retained in metadata.',
+    '  --steps                 Optional steps hint retained in metadata.',
     '  --seed                  Optional numeric seed.',
     '  --output-dir            Output directory. Default: ./output/banana',
   ].join('\n');
@@ -444,7 +616,7 @@ export async function main(argv = process.argv.slice(2)) {
     env: process.env,
   });
   const result = await runWorkflow(request, {
-    baseUrl: args['base-url'],
+    baseUrl: resolveBaseUrl(args['base-url'], process.env),
     endpoint: args.endpoint,
     apiKeyHeader: args['api-key-header'],
     apiKeyPrefix: args['api-key-prefix'],

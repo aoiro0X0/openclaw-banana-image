@@ -2,37 +2,45 @@
 
 ## Request Shape
 
-`banana-image.mjs` sends a JSON POST request to `new URL(endpoint, baseUrl)`.
+`banana-image.mjs` sends a JSON POST request to a Zenmux Vertex AI `generateContent` endpoint derived from the selected model.
 
 Default transport values:
 
 - base URL: `https://zenmux.ai/api/vertex-ai`
-- endpoint: `/v1/images`
-- model: `google/gemini-3.1-flash-image-preview`
+- endpoint pattern: `/v1/publishers/{provider}/models/{model}:generateContent`
+- default model: `google/gemini-3-pro-image-preview`
 - api version: `v1`
 
-Core fields:
-
-- `task`
-- `mode`
-- `model`
-- `api_version`
-- `size`
-- `steps`
-- `seed`
-- `input_image`
-- `mask_image`
-- `reference_images`
-
-File objects use this shape:
+Core request shape:
 
 ```json
 {
-  "path": "F:/images/input.png",
-  "filename": "input.png",
-  "contentBase64": "..."
+  "contents": [
+    {
+      "role": "user",
+      "parts": [
+        { "text": "Create a banana ad image" },
+        {
+          "inlineData": {
+            "mimeType": "image/png",
+            "data": "...base64..."
+          }
+        }
+      ]
+    }
+  ],
+  "generationConfig": {
+    "responseModalities": ["TEXT", "IMAGE"],
+    "seed": 7
+  }
 }
 ```
+
+The runner places the task prompt in a text part, then appends inline image parts for:
+
+- `inputImagePath`
+- `referenceImagePaths`
+- `maskPath`
 
 ## Authentication
 
@@ -41,29 +49,32 @@ By default the runner sends:
 - header name: `Authorization`
 - header value: `Bearer <apiKey>`
 
-The script first checks `ZENMUX_API_KEY`, then falls back to an interactive prompt.
+The script checks `ZENMUX_API_KEY`, then `GEMINI_API_KEY`, then falls back to an interactive prompt.
 
 ## Response Shape
 
-The runner accepts these array keys for generated images:
+The runner accepts these image output shapes:
 
-- `images`
-- `output_files`
-- `data`
+- legacy arrays under `images`, `output_files`, or `data`
+- Vertex AI parts under `response.parts[]`
+- Vertex AI parts under `candidates[].content.parts[]`
 
-Each item may include:
+Each image item may include:
 
-- `filename`
+- `inlineData.data`
+- `inline_data.data`
 - `b64_json`
 - `contentBase64`
 - `base64`
 - `data`
 - `url`
 
-Optional top-level fields:
+Text parts are collected from the same Vertex AI response parts and returned as `text_output`.
 
-- `request_summary`
-- `repro_info`
-- `error`
+## Error Handling
 
-If image data is returned by `url`, the runner downloads it and saves it locally.
+The runner preserves upstream response snippets and adds clearer messages for:
+
+- `403`: API key is valid in format but lacks permission to access the model or endpoint
+- `404`: base URL or `generateContent` path is wrong
+- other HTTP failures: returned as-is with the upstream response body snippet

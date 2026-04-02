@@ -1,13 +1,13 @@
 ---
 name: openclaw-banana-image
-description: Install and run an OpenClaw banana image skill for Nano Banana 2 image generation and editing over the Zenmux Vertex AI endpoint. Use it for text-to-image, image-to-image, inpaint, and background replacement tasks that should be installable from a GitHub skill folder URL.
+description: Install and run an OpenClaw banana image skill for Nano Banana image generation and editing over the Zenmux Vertex AI endpoint. Use it for text-to-image, image-to-image, inpaint, and background replacement tasks that should be installable from a GitHub skill folder URL.
 ---
 
 # OpenClaw Banana Image
 
 ## Overview
 
-This skill routes Nano Banana 2 image generation and editing requests for OpenClaw. It classifies the task, collects local file inputs, resolves `ZENMUX_API_KEY` or prompts for a one-time key, calls the Zenmux Vertex AI endpoint, and saves results into the workspace.
+This skill routes Nano Banana image generation and editing requests for OpenClaw. It classifies the task, collects local file inputs, resolves `ZENMUX_API_KEY` or `GEMINI_API_KEY`, calls the Zenmux Vertex AI `generateContent` endpoint, and saves image outputs into the workspace.
 
 ## GitHub Install
 
@@ -35,13 +35,16 @@ Use $skill-installer to install this skill from https://github.com/<owner>/<repo
 ## Defaults
 
 - Base URL: `https://zenmux.ai/api/vertex-ai`
-- Model: `google/gemini-3.1-flash-image-preview`
+- Endpoint pattern: `/v1/publishers/{provider}/models/{model}:generateContent`
+- Model: `google/gemini-3-pro-image-preview`
 - API version: `v1`
-- API key env var: `ZENMUX_API_KEY`
+- API key env vars: `ZENMUX_API_KEY`, `GEMINI_API_KEY`
+- Base URL env vars: `ZENMUX_BASE_URL`, `GOOGLE_GEMINI_BASE_URL`
+- Optional image model env vars: `OPENCLAW_BANANA_MODEL`, `ZENMUX_IMAGE_MODEL`, `GEMINI_MODEL` (only if it is an image-capable model)
 
 ## When to Use
 
-Use this skill when the request is about Nano Banana 2 raster image workflows for OpenClaw, including:
+Use this skill when the request is about Nano Banana raster image workflows for OpenClaw, including:
 
 - text-to-image generation
 - image-to-image editing
@@ -58,13 +61,13 @@ Do not use it for vector assets, SVG/logo systems, or code-native graphics.
    - input image only -> `img2img`
    - input image + mask -> `inpaint`
    - explicit background-replacement request -> `background-replace`
-3. Resolve the API key from `ZENMUX_API_KEY`; if missing, prompt for a one-time key.
+3. Resolve the API key from `ZENMUX_API_KEY` or `GEMINI_API_KEY`; if both are missing, prompt for a one-time key.
 4. Run `scripts/banana-image.mjs` with the task, local paths, and API settings.
 5. Return the saved file paths plus the request summary and repro info.
 
 ## API Key Rules
 
-- Ask for the API key only when the current run does not already have one and `ZENMUX_API_KEY` is unset.
+- Ask for the API key only when the current run does not already have one and both env vars are unset.
 - Treat the key as request-scoped only.
 - Never write the key to disk, environment files, caches, or repo config.
 
@@ -87,5 +90,5 @@ Helpful references:
 - Mode selection and examples: `references/workflows.md`
 - Input/output contract: `references/params.md`
 - HTTP request and response shape: `references/http-api.md`
-- Nano Banana 2 provider notes: `references/zenmux-nano-banana.md`
+- Nano Banana provider notes: `references/zenmux-nano-banana.md`
 - GitHub install guidance: `references/github-install.md`
