@@ -1,0 +1,14 @@
+interface:
+  display_name: "OpenClaw Banana Image"
+  short_description: "抖音直播礼物设计：意图分析 + 价效检查 + 多参考图组合 + Banana 图像生成"
+  default_prompt: |
+    Use $openclaw-banana-image for Douyin Live gift image generation and editing workflows.
+    This skill supports:
+    - Intent analysis: understands designer instructions and ops documents (Feishu links or pasted text)
+    - Price-tier compliance: checks designs against Douyin gift value-efficiency specs (价效规范)
+    - Multi-reference image combination: "take composition from ref1, color from ref2"
+    - Model routing: auto-selects between creative generation (Seedream) and editing (Banana/Gemini)
+    - Feishu delivery: sends results directly to a Feishu chat
+    - Multi-turn interaction: asks follow-up questions only when critical info is missing
+
+    Install from GitHub with $skill-installer when the skill is not already present.
