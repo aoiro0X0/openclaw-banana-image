@@ -1,7 +1,11 @@
 ---
 name: openclaw-banana-image
 description: Install and run an OpenClaw banana image skill for Nano Banana image generation and editing over the Zenmux Vertex AI endpoint. Use it for text-to-image, image-to-image, inpaint, and background replacement tasks that should be installable from a GitHub skill folder URL.
+deprecated: true
 ---
+
+> **DEPRECATED** — This is the pre-v1.0.0 stub. It only contains the core image generation script and lacks intent analysis, model routing, and Feishu integration.
+> Use the full v1.0.0 implementation at the repo root instead.
 
 # OpenClaw Banana Image
 

@@ -5,7 +5,7 @@ import { basename, extname, resolve } from 'node:path';
 import { parseArgs } from 'node:util';
 import { pathToFileURL } from 'node:url';
 import readline from 'node:readline/promises';
-import { analyzeIntent } from './intent-analyzer.mjs';
+import { analyzeIntent, analyzeOpsDoc } from './intent-analyzer.mjs';
 import { routeModel } from './model-router.mjs';
 import { fetchFeishuDoc } from './feishu-bridge.mjs';
 
@@ -634,10 +634,6 @@ export async function main(argv = process.argv.slice(2)) {
     process.stdout.write(`${helpText()}\n`);
     return 0;
   }
-  if (!args.task) {
-    process.stderr.write('The --task option is required.\n');
-    return 1;
-  }
 
   // --- Step 1: Load ops document ---
   let opsDocContent = args['ops-doc-text'] ?? null;
@@ -647,6 +643,24 @@ export async function main(argv = process.argv.slice(2)) {
     } catch (error) {
       process.stderr.write(`Warning: failed to fetch Feishu doc: ${error.message}\n`);
     }
+  }
+
+  // If no task provided but ops doc is present, run doc-only compliance analysis
+  const hasOpsDoc = Boolean(opsDocContent);
+  const hasTask = Boolean(args.task);
+  if (!hasTask) {
+    if (hasOpsDoc) {
+      try {
+        const { table } = await analyzeOpsDoc(opsDocContent, { env: process.env });
+        process.stdout.write(`${table}\n`);
+        return 0;
+      } catch (error) {
+        process.stderr.write(`Ops doc analysis failed: ${error.message}\n`);
+        return 1;
+      }
+    }
+    process.stderr.write('The --task option is required (or provide --ops-doc-text / --feishu-doc-url for compliance table only).\n');
+    return 1;
   }
 
   // --- Step 2: Load conversation history ---

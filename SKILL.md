@@ -47,6 +47,7 @@ Use $skill-installer to install this skill from https://github.com/<owner>/<repo
 
 Use this skill when the request involves Douyin Live gift raster image workflows:
 
+- **ops doc intake** — user provides a Feishu doc or pastes ops text without a specific task → output price-tier compliance table
 - text-to-image generation from ops brief
 - image-to-image editing on a base image
 - inpaint or localized edits
@@ -56,6 +57,28 @@ Use this skill when the request involves Douyin Live gift raster image workflows
 Do not use it for vector assets, SVG/logo systems, or code-native graphics.
 
 ## Workflow
+
+### Mode A — Ops Doc Intake (no task yet)
+
+When the user provides an ops document but has not specified a design task:
+
+1. Pass the document via `--ops-doc-text` or `--feishu-doc-url` without `--task`.
+2. The script extracts every gift item and its price from the doc using a text LLM.
+3. Locally matches each price to the Douyin gift 价效梯度 table.
+4. Outputs a markdown compliance table showing tier, recommended subject types, duration, camera, particle, and 3D/vibration/sound flags for each gift.
+5. Present the table to the user. They can then pick a gift and proceed to Mode B.
+
+```bash
+node ./scripts/banana-image.mjs \
+  --feishu-doc-url "https://bytedance.larkoffice.com/docx/xxx"
+```
+
+```bash
+node ./scripts/banana-image.mjs \
+  --ops-doc-text "礼物A 500元 神兽\n礼物B 50元 小动物"
+```
+
+### Mode B — Full Design Workflow (with task)
 
 1. Read ops document from `--feishu-doc-url` or `--ops-doc-text`.
 2. Call intent analyzer (text LLM) → get structured plan with price-tier check.

@@ -300,6 +300,87 @@ export function parseAnalysisResponse(raw) {
 }
 
 // ---------------------------------------------------------------------------
+// Ops doc batch analysis
+// ---------------------------------------------------------------------------
+export function buildOpsDocExtractionSystemPrompt() {
+  return `你是一个运营文档解析助手。从运营文档中提取所有礼物项目，输出 JSON。
+
+每个礼物包含：
+- name: 礼物名称
+- price_str: 价位原文，保留单位（如"500元"、"5000钻"、"99.9元"）
+- subject_description: 物象或视觉描述（没有则为空字符串）
+
+严格输出以下 JSON，不要有其他内容：
+{"gifts": [{"name": "...", "price_str": "...", "subject_description": "..."}, ...]}
+
+如果文档中没有礼物信息，输出 {"gifts": []}。`;
+}
+
+export async function extractGiftsFromOpsDoc(opsDocContent, { env = process.env, fetchImpl = fetch, llmConfig = null } = {}) {
+  const config = llmConfig ?? resolveTextLlmConfig(env);
+  if (!config.apiKey) {
+    throw new Error('TEXT_LLM_API_KEY is required for ops doc analysis.');
+  }
+  const raw = await callTextLlm({
+    systemPrompt: buildOpsDocExtractionSystemPrompt(),
+    userMessage: opsDocContent.trim(),
+    config,
+    fetchImpl,
+  });
+  const cleaned = raw.replace(/^```json\s*/i, '').replace(/```\s*$/, '').trim();
+  let parsed;
+  try {
+    parsed = JSON.parse(cleaned);
+  } catch {
+    throw new Error(`Ops doc extraction returned invalid JSON: ${cleaned.slice(0, 200)}`);
+  }
+  return Array.isArray(parsed.gifts) ? parsed.gifts : [];
+}
+
+export function buildComplianceRows(gifts) {
+  return gifts.map((gift) => {
+    const yuan = parsePriceToYuan(gift.price_str);
+    const tier = yuan !== null ? matchPriceTier(yuan) : null;
+    return {
+      name: gift.name,
+      price_str: gift.price_str,
+      price_yuan: yuan,
+      tier_label: tier?.label ?? '未识别',
+      subject_types: tier?.subjectTypes.slice(0, 3).join(' / ') ?? '—',
+      duration: tier ? `${tier.durationSeconds}s` : '—',
+      camera_cuts: tier?.cameraCuts ?? '—',
+      particle_level: tier?.particleLevel ?? '—',
+      has_3d: tier?.has3D ?? false,
+      has_vibration: tier?.hasVibration ?? false,
+      has_sound: tier?.hasSound ?? false,
+      subject_description: gift.subject_description ?? '',
+    };
+  });
+}
+
+export function formatComplianceTable(rows) {
+  if (rows.length === 0) {
+    return '运营文档中未识别到礼物信息。';
+  }
+
+  const header = '| 礼物名称 | 价位 | 价效梯度 | 推荐物象类型 | 时长 | 镜头 | 粒子效果 | 3D | 震动 | 音效 |';
+  const divider = '|---------|------|---------|------------|------|------|---------|----|----|-----|';
+  const rowLines = rows.map((r) => {
+    const flag = (v) => (v ? '✓' : '—');
+    return `| ${r.name} | ${r.price_str} | ${r.tier_label} | ${r.subject_types} | ${r.duration} | ${r.camera_cuts} | ${r.particle_level} | ${flag(r.has_3d)} | ${flag(r.has_vibration)} | ${flag(r.has_sound)} |`;
+  });
+
+  return [header, divider, ...rowLines].join('\n');
+}
+
+export async function analyzeOpsDoc(opsDocContent, opts = {}) {
+  const gifts = await extractGiftsFromOpsDoc(opsDocContent, opts);
+  const rows = buildComplianceRows(gifts);
+  const table = formatComplianceTable(rows);
+  return { gifts, rows, table };
+}
+
+// ---------------------------------------------------------------------------
 // Main analyze function
 // ---------------------------------------------------------------------------
 export async function analyzeIntent(
