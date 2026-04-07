@@ -1,6 +1,6 @@
 ---
-name: openclaw-banana-image
-description: 为抖音直播礼物设计师提供价效规范检查 + 多参考图组合 + Banana 图像生成的完整工作流 skill。意图分析、运营文档提取、合规表格输出均由 OpenClaw Agent 处理；脚本仅负责图像生成，只需配置 ZENMUX_API_KEY。
+name: openclaw-gift-design
+description: 为抖音直播礼物设计师提供意图分析 + 价效规范检查 + 多参考图组合 + 图像生成的完整工作流 skill。意图分析、运营文档提取、合规表格输出均由 OpenClaw Agent 处理；脚本负责图像生成，只需配置 ZENMUX_API_KEY。
 ---
 
 # OpenClaw Banana Image
@@ -18,18 +18,18 @@ Only one API key is needed: `ZENMUX_API_KEY` (or `GEMINI_API_KEY`).
 
 Expected repo layout:
 
-- `<repo>/openclaw-banana-image/SKILL.md`
-- `<repo>/openclaw-banana-image/agents/openai.yaml`
-- `<repo>/openclaw-banana-image/scripts/banana-image.mjs`
-- `<repo>/openclaw-banana-image/scripts/intent-analyzer.mjs`
-- `<repo>/openclaw-banana-image/scripts/model-router.mjs`
-- `<repo>/openclaw-banana-image/scripts/feishu-bridge.mjs`
-- `<repo>/openclaw-banana-image/references/*`
+- `<repo>/openclaw-gift-design/SKILL.md`
+- `<repo>/openclaw-gift-design/agents/openai.yaml`
+- `<repo>/openclaw-gift-design/scripts/banana-image.mjs`
+- `<repo>/openclaw-gift-design/scripts/intent-analyzer.mjs`
+- `<repo>/openclaw-gift-design/scripts/model-router.mjs`
+- `<repo>/openclaw-gift-design/scripts/feishu-bridge.mjs`
+- `<repo>/openclaw-gift-design/references/*`
 
 Agent-facing install request example:
 
 ```text
-Use $skill-installer to install this skill from https://github.com/<owner>/<repo>/tree/main/openclaw-banana-image
+Use $skill-installer to install this skill from https://github.com/<owner>/<repo>/tree/main/openclaw-gift-design
 ```
 
 ## Defaults

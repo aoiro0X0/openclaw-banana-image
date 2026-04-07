@@ -6,8 +6,8 @@ This skill is intended to be stored in a GitHub repository as a plain skill fold
 
 Use one of these layouts:
 
-- repo root contains `openclaw-banana-image/`
-- or a shared skills repo contains `skills/openclaw-banana-image/`
+- repo root contains `openclaw-gift-design/`
+- or a shared skills repo contains `skills/openclaw-gift-design/`
 
 The important rule is that the URL points to the folder whose basename is the skill name.
 
@@ -16,9 +16,9 @@ The important rule is that the URL points to the folder whose basename is the sk
 Examples an agent can consume with `$skill-installer`:
 
 ```text
-https://github.com/<owner>/<repo>/tree/main/openclaw-banana-image
-https://github.com/<owner>/<repo>/tree/main/skills/openclaw-banana-image
-https://github.com/<owner>/<repo>/tree/<tag-or-branch>/openclaw-banana-image
+https://github.com/<owner>/<repo>/tree/main/openclaw-gift-design
+https://github.com/<owner>/<repo>/tree/main/skills/openclaw-gift-design
+https://github.com/<owner>/<repo>/tree/<tag-or-branch>/openclaw-gift-design
 ```
 
 ## Prompt Examples
@@ -26,13 +26,13 @@ https://github.com/<owner>/<repo>/tree/<tag-or-branch>/openclaw-banana-image
 Short form:
 
 ```text
-Install this skill from https://github.com/<owner>/<repo>/tree/main/openclaw-banana-image
+Install this skill from https://github.com/<owner>/<repo>/tree/main/openclaw-gift-design
 ```
 
 Explicit form:
 
 ```text
-Use $skill-installer to install this skill from https://github.com/<owner>/<repo>/tree/main/openclaw-banana-image
+Use $skill-installer to install this skill from https://github.com/<owner>/<repo>/tree/main/openclaw-gift-design
 ```
 
 ## Publishing Checklist

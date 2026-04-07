@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Model Router for openclaw-banana-image
+ * Model Router for openclaw-gift-design
  *
  * Two modes:
  *   auto  - select model based on task type (default)

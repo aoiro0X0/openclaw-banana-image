@@ -1,5 +1,5 @@
 ---
-name: openclaw-banana-image
+name: openclaw-gift-design
 description: Install and run an OpenClaw banana image skill for Nano Banana image generation and editing over the Zenmux Vertex AI endpoint. Use it for text-to-image, image-to-image, inpaint, and background replacement tasks that should be installable from a GitHub skill folder URL.
 deprecated: true
 ---
@@ -19,21 +19,21 @@ This folder is designed to be installed directly from a GitHub path by an agent.
 
 Expected repo layout:
 
-- `<repo>/openclaw-banana-image/SKILL.md`
-- `<repo>/openclaw-banana-image/agents/openai.yaml`
-- `<repo>/openclaw-banana-image/scripts/banana-image.mjs`
-- `<repo>/openclaw-banana-image/references/*`
+- `<repo>/openclaw-gift-design/SKILL.md`
+- `<repo>/openclaw-gift-design/agents/openai.yaml`
+- `<repo>/openclaw-gift-design/scripts/banana-image.mjs`
+- `<repo>/openclaw-gift-design/references/*`
 
 Once this folder is pushed to GitHub, an agent can install it from a GitHub tree URL such as:
 
 ```text
-https://github.com/<owner>/<repo>/tree/main/openclaw-banana-image
+https://github.com/<owner>/<repo>/tree/main/openclaw-gift-design
 ```
 
 Agent-facing install request example:
 
 ```text
-Use $skill-installer to install this skill from https://github.com/<owner>/<repo>/tree/main/openclaw-banana-image
+Use $skill-installer to install this skill from https://github.com/<owner>/<repo>/tree/main/openclaw-gift-design
 ```
 
 ## Defaults

@@ -1,4 +1,0 @@
-interface:
-  display_name: "OpenClaw Banana Image"
-  short_description: "GitHub-installable Nano Banana image skill"
-  default_prompt: "Use $openclaw-banana-image for Nano Banana image generation or editing, or install it from a GitHub tree URL with $skill-installer when the skill is not already present."

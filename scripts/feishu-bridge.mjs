@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Feishu Bridge for openclaw-banana-image
+ * Feishu Bridge for openclaw-gift-design
  *
  * Fetches ops document content via lark-cli (already available in OpenClaw environment).
  * Result delivery back to Feishu is handled by OpenClaw through standard mediaUrls fields.

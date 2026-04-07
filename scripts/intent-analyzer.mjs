@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Price-tier knowledge base and local compliance helpers for openclaw-banana-image.
+ * Price-tier knowledge base and local compliance helpers for openclaw-gift-design.
  *
  * All intent analysis and document extraction is handled by the OpenClaw Agent.
  * This module only contains pure local functions that do not require any LLM or API key.
