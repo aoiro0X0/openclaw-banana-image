@@ -38,7 +38,7 @@ interface:
 
     ---
 
-    ## Mode A — Ops Doc Intake (user provides ops doc, no specific design task yet)
+    ## 运营文档处理流程
 
     Trigger: user pastes ops document text OR provides a Feishu doc URL, AND has not specified a specific image to generate.
     This includes cases where the user just shares the doc, asks you to "look at" it, or says "这是运营文档".
@@ -55,169 +55,27 @@ interface:
        - tier label, recommended subject types (first 3), duration, camera cuts, cut count, particle level, 3D/vibration/sound flags.
     4. Output a markdown compliance table (MUST output this, not a prose summary):
        | 礼物名称 | 价位 | 价效梯度 | 推荐物象类型 | 时长 | 镜头 | 粒子效果 | 3D | 震动 | 音效 |
-    5. Create a Feishu design doc in the user's personal space:
-       - Title: "<主题名> 设计文档" (infer theme from ops doc title or content; fall back to "礼物批次 设计文档")
-       - Content: ops doc text (verbatim), then a horizontal rule, then a design work table:
+    5. Create the Feishu design doc by running the script with --create-design-doc.
+       DO NOT call lark-cli directly — always use the script to avoid shell escaping issues.
 
-         Use <lark-table> (NOT standard markdown tables) so column widths and cell colors work.
-         Column widths: label col 130px, each gift col = floor((730-130)/N) px, min 100px.
-         Example for 2 gifts: column-widths="130,300,300"
+       - Infer the title from the ops doc title or main theme (e.g. "冬日一起毛绒绒"). Fall back to "礼物批次".
+       - Build the gifts JSON array: one object per gift with "name" and "price_str" fields.
+       - Pass the full ops doc text via --ops-doc-text.
 
-         ```
-         <lark-table column-widths="130,300,300" header-row="true" header-column="true">
-         <lark-tr>
-         <lark-td>
+       ```bash
+       node ./scripts/banana-image.mjs \
+         --create-design-doc \
+         --title "<主题名>" \
+         --ops-doc-text "<运营文档原文>" \
+         --gifts-json '[{"name":"毛绒花束","price_str":"99钻"},{"name":"冬日暖阳","price_str":"8999钻"}]'
+       ```
 
-         字段
-
-         </lark-td>
-         <lark-td>
-
-         **礼物A（500钻）**
-
-         </lark-td>
-         <lark-td>
-
-         **礼物B（200钻）**
-
-         </lark-td>
-         </lark-tr>
-         <lark-tr>
-         <lark-td>
-
-         价效梯度
-
-         </lark-td>
-         <lark-td>
-
-         <text background-color="orange">头部低</text>
-
-         </lark-td>
-         <lark-td>
-
-         <text background-color="yellow">腰部</text>
-
-         </lark-td>
-         </lark-tr>
-         <lark-tr>
-         <lark-td>
-
-         └ 时长
-
-         </lark-td>
-         <lark-td>
-
-         <text background-color="orange">6s</text>
-
-         </lark-td>
-         <lark-td>
-
-         <text background-color="yellow">3s</text>
-
-         </lark-td>
-         </lark-tr>
-         <lark-tr>
-         <lark-td>
-
-         └ 镜头数
-
-         </lark-td>
-         <lark-td>
-
-         <text background-color="orange">2个镜头</text>
-
-         </lark-td>
-         <lark-td>
-
-         <text background-color="yellow">无</text>
-
-         </lark-td>
-         </lark-tr>
-         <lark-tr>
-         <lark-td>
-
-         └ 切镜次数
-
-         </lark-td>
-         <lark-td>
-
-         <text background-color="orange">2</text>
-
-         </lark-td>
-         <lark-td>
-
-         <text background-color="yellow">0</text>
-
-         </lark-td>
-         </lark-tr>
-         <lark-tr>
-         <lark-td>
-
-         关键帧设计
-
-         </lark-td>
-         <lark-td>
-
-
-
-         </lark-td>
-         <lark-td>
-
-
-
-         </lark-td>
-         </lark-tr>
-         <lark-tr>
-         <lark-td>
-
-         直播间背景展示
-
-         </lark-td>
-         <lark-td>
-
-
-
-         </lark-td>
-         <lark-td>
-
-
-
-         </lark-td>
-         </lark-tr>
-         <lark-tr>
-         <lark-td>
-
-         ICON预览
-
-         </lark-td>
-         <lark-td>
-
-
-
-         </lark-td>
-         <lark-td>
-
-
-
-         </lark-td>
-         </lark-tr>
-         </lark-table>
-         ```
-
-       Tier → background-color mapping (use <text background-color="X"> in all 4 auto rows per column):
-         头部8层 / 头部  → red
-         头部低          → orange
-         腰部高 / 腰部   → yellow
-         尾部高 / 尾部   → green
-         未识别          → gray
-       Do NOT add emoji anywhere. Do NOT use standard markdown table (|---|) syntax.
-
-       - Command: `lark-cli docs +create --title "<title>" --markdown "<content>" --wiki-space my_library --as user --format json`
+       The script returns JSON: `{ "ok": true, "url": "https://...", "doc_id": "..." }`
     6. Show the compliance table to the user and share the design doc URL.
 
     ---
 
-    ## Mode B — Full Design Workflow (user provides a specific design task)
+    ## 图像生成流程
 
     Trigger: user specifies what to generate or edit (with or without an ops doc).
 

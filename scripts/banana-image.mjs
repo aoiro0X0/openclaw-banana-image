@@ -6,6 +6,8 @@ import { parseArgs } from 'node:util';
 import { pathToFileURL } from 'node:url';
 import readline from 'node:readline/promises';
 import { routeModel } from './model-router.mjs';
+import { buildComplianceRows, buildDesignDocMarkdown } from './intent-analyzer.mjs';
+import { createFeishuDesignDoc } from './feishu-bridge.mjs';
 
 export const DEFAULT_BASE_URL = 'https://zenmux.ai/api/vertex-ai';
 export const DEFAULT_MODEL = 'google/gemini-3-pro-image-preview';
@@ -563,6 +565,10 @@ export function parseCliArgs(argv) {
       'output-dir': { type: 'string' },
       'api-key-header': { type: 'string', default: 'Authorization' },
       'api-key-prefix': { type: 'string', default: 'Bearer ' },
+      'create-design-doc': { type: 'boolean', default: false },
+      title: { type: 'string' },
+      'ops-doc-text': { type: 'string' },
+      'gifts-json': { type: 'string' },
       help: { type: 'boolean', default: false },
     },
   });
@@ -624,6 +630,37 @@ export async function main(argv = process.argv.slice(2)) {
     process.stdout.write(`${helpText()}\n`);
     return 0;
   }
+
+  // Design doc creation mode — Agent passes structured gift data, script builds
+  // the lark-table markdown and creates the Feishu doc internally to avoid shell
+  // escaping issues with long markdown content.
+  if (args['create-design-doc']) {
+    if (!args['gifts-json']) {
+      process.stderr.write('--gifts-json is required with --create-design-doc.\n');
+      return 1;
+    }
+    let gifts;
+    try {
+      gifts = JSON.parse(args['gifts-json']);
+    } catch {
+      process.stderr.write('--gifts-json must be valid JSON.\n');
+      return 1;
+    }
+    const opsDocText = args['ops-doc-text'] ?? '';
+    const title = (args.title ?? '礼物批次') + ' 设计文档';
+    const rows = buildComplianceRows(gifts);
+    const markdownContent = buildDesignDocMarkdown(opsDocText, rows);
+    try {
+      const docResult = await createFeishuDesignDoc(title, markdownContent);
+      process.stdout.write(`${JSON.stringify({ ok: true, url: docResult.url, doc_id: docResult.doc_id }, null, 2)}\n`);
+      return 0;
+    } catch (err) {
+      process.stderr.write(`Design doc creation failed: ${err.message}\n`);
+      process.stdout.write(`${JSON.stringify({ ok: false, error: err.message }, null, 2)}\n`);
+      return 1;
+    }
+  }
+
   if (!args.task) {
     process.stderr.write('The --task option is required. The Agent performs intent analysis and then calls this script with an optimized prompt.\n');
     return 1;
