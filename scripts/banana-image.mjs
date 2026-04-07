@@ -413,8 +413,13 @@ export function buildReproInfo(request, responsePayload) {
   };
 }
 
-export function buildOpenClawMedia(outputFiles) {
-  const mediaUrls = [...outputFiles];
+export async function buildOpenClawMedia(outputFiles) {
+  const mediaUrls = [];
+  for (const filePath of outputFiles) {
+    const bytes = await readFile(filePath);
+    const mimeType = guessMimeType(filePath);
+    mediaUrls.push(`data:${mimeType};base64,${bytes.toString('base64')}`);
+  }
   return {
     mediaUrls,
     ...(mediaUrls[0] ? { mediaUrl: mediaUrls[0] } : {}),
@@ -526,7 +531,7 @@ export async function runWorkflow(request, {
       fetchImpl,
     });
     result.paths = [...result.output_files];
-    result.media = buildOpenClawMedia(result.output_files);
+    result.media = await buildOpenClawMedia(result.output_files);
     result.mediaUrls = result.media.mediaUrls;
     result.mediaUrl = result.media.mediaUrl ?? null;
     result.request_summary = buildRequestSummary(request, responsePayload);

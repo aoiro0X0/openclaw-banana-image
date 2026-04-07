@@ -119,8 +119,7 @@ node ./scripts/banana-image.mjs \
   --task "参考图1取构图，参考图2取配色，做一个500元梯度的礼物" \
   --reference-image-path ./ref1.png --reference-label "取构图" \
   --reference-image-path ./ref2.png --reference-label "取配色" \
-  --feishu-doc-url "https://bytedance.larkoffice.com/docx/xxx" \
-  --feishu-chat-id "oc_xxx"
+  --feishu-doc-url "https://bytedance.larkoffice.com/docx/xxx"
 ```
 
 ```bash
