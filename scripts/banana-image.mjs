@@ -5,9 +5,9 @@ import { basename, extname, resolve } from 'node:path';
 import { parseArgs } from 'node:util';
 import { pathToFileURL } from 'node:url';
 import readline from 'node:readline/promises';
-import { analyzeIntent, analyzeOpsDoc } from './intent-analyzer.mjs';
+import { analyzeIntent, analyzeOpsDoc, buildDesignDocMarkdown } from './intent-analyzer.mjs';
 import { routeModel } from './model-router.mjs';
-import { fetchFeishuDoc } from './feishu-bridge.mjs';
+import { fetchFeishuDoc, createFeishuDesignDoc } from './feishu-bridge.mjs';
 
 export const DEFAULT_BASE_URL = 'https://zenmux.ai/api/vertex-ai';
 export const DEFAULT_MODEL = 'google/gemini-3-pro-image-preview';
@@ -569,6 +569,7 @@ export function parseCliArgs(argv) {
       'feishu-doc-url': { type: 'string' },
       'conversation': { type: 'string' },
       'skip-intent': { type: 'boolean', default: false },
+      'skip-design-doc': { type: 'boolean', default: false },
       help: { type: 'boolean', default: false },
     },
   });
@@ -611,6 +612,7 @@ export function helpText() {
     '',
     'Feishu delivery options:',
     '  Results are returned via OpenClaw mediaUrls fields and delivered automatically through the Feishu/OpenClaw integration.',
+    '  --skip-design-doc       Skip creating Feishu design doc in Mode A (ops doc intake).',
     '',
     'Advanced options:',
     '  --base-url              Vertex AI base URL.',
@@ -656,8 +658,20 @@ export async function main(argv = process.argv.slice(2)) {
   if (!hasTask) {
     if (hasOpsDoc) {
       try {
-        const { table } = await analyzeOpsDoc(opsDocContent, { env: process.env });
+        const { table, rows, doc_title } = await analyzeOpsDoc(opsDocContent, { env: process.env });
         process.stdout.write(`${table}\n`);
+
+        if (!args['skip-design-doc']) {
+          const effectiveTitle = (doc_title ?? '礼物批次') + ' 设计文档';
+          const designMarkdown = buildDesignDocMarkdown(opsDocContent, rows);
+          try {
+            const docResult = await createFeishuDesignDoc(effectiveTitle, designMarkdown);
+            process.stderr.write(`设计文档已创建：${docResult.url ?? effectiveTitle}\n`);
+          } catch (docError) {
+            process.stderr.write(`Warning: 设计文档创建失败: ${docError.message}\n`);
+          }
+        }
+
         return 0;
       } catch (error) {
         process.stderr.write(`Ops doc analysis failed: ${error.message}\n`);

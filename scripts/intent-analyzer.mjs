@@ -303,17 +303,19 @@ export function parseAnalysisResponse(raw) {
 // Ops doc batch analysis
 // ---------------------------------------------------------------------------
 export function buildOpsDocExtractionSystemPrompt() {
-  return `你是一个运营文档解析助手。从运营文档中提取所有礼物项目，输出 JSON。
+  return `你是一个运营文档解析助手。从运营文档中提取所有礼物项目和文档主题名，输出 JSON。
 
-每个礼物包含：
-- name: 礼物名称
-- price_str: 价位原文，保留单位（如"500元"、"5000钻"、"99.9元"）
-- subject_description: 物象或视觉描述（没有则为空字符串）
+字段说明：
+- doc_title: 文档/批次的主题名称（如"冬日一起毛绒绒"，不含"设计文档"等后缀，无法识别则为 null）
+- gifts: 礼物列表，每项包含：
+  - name: 礼物名称
+  - price_str: 价位原文，保留单位（如"500元"、"5000钻"、"99.9元"）
+  - subject_description: 物象或视觉描述（没有则为空字符串）
 
 严格输出以下 JSON，不要有其他内容：
-{"gifts": [{"name": "...", "price_str": "...", "subject_description": "..."}, ...]}
+{"doc_title": "...", "gifts": [{"name": "...", "price_str": "...", "subject_description": "..."}, ...]}
 
-如果文档中没有礼物信息，输出 {"gifts": []}。`;
+如果文档中没有礼物信息，输出 {"doc_title": null, "gifts": []}。`;
 }
 
 export async function extractGiftsFromOpsDoc(opsDocContent, { env = process.env, fetchImpl = fetch, llmConfig = null } = {}) {
@@ -334,7 +336,20 @@ export async function extractGiftsFromOpsDoc(opsDocContent, { env = process.env,
   } catch {
     throw new Error(`Ops doc extraction returned invalid JSON: ${cleaned.slice(0, 200)}`);
   }
-  return Array.isArray(parsed.gifts) ? parsed.gifts : [];
+  return {
+    doc_title: parsed.doc_title ?? null,
+    gifts: Array.isArray(parsed.gifts) ? parsed.gifts : [],
+  };
+}
+
+export function parseCutsCount(cameraCuts) {
+  if (!cameraCuts || cameraCuts === '无') return '0';
+  const rangeMatch = cameraCuts.match(/(\d+-\d+)/);
+  if (rangeMatch) return rangeMatch[1];
+  const numMatch = cameraCuts.match(/(\d+)/);
+  if (numMatch) return numMatch[1];
+  if (cameraCuts.includes('多')) return '多';
+  return cameraCuts;
 }
 
 export function buildComplianceRows(gifts) {
@@ -349,6 +364,7 @@ export function buildComplianceRows(gifts) {
       subject_types: tier?.subjectTypes.slice(0, 3).join(' / ') ?? '—',
       duration: tier ? `${tier.durationSeconds}s` : '—',
       camera_cuts: tier?.cameraCuts ?? '—',
+      cuts_count: parseCutsCount(tier?.cameraCuts ?? ''),
       particle_level: tier?.particleLevel ?? '—',
       has_3d: tier?.has3D ?? false,
       has_vibration: tier?.hasVibration ?? false,
@@ -373,11 +389,43 @@ export function formatComplianceTable(rows) {
   return [header, divider, ...rowLines].join('\n');
 }
 
+export function buildDesignDocMarkdown(opsDocContent, rows) {
+  const header = ['| 字段 |', '|------|'];
+  const colHeaders = rows.map((r) => `${r.name}（${r.price_str}）`);
+  header[0] += ' ' + colHeaders.join(' | ') + ' |';
+  header[1] += colHeaders.map(() => '------').join('|') + '|';
+
+  const makeRow = (label, values) =>
+    `| ${label} | ${values.join(' | ')} |`;
+
+  const tableLines = [
+    header[0],
+    header[1],
+    makeRow('价效梯度', rows.map((r) => r.tier_label)),
+    makeRow('时长', rows.map((r) => r.duration)),
+    makeRow('镜头数', rows.map((r) => r.camera_cuts)),
+    makeRow('切镜次数', rows.map((r) => r.cuts_count)),
+    makeRow('关键帧设计', rows.map(() => ' ')),
+    makeRow('直播间背景展示', rows.map(() => ' ')),
+    makeRow('ICON预览', rows.map(() => ' ')),
+  ];
+
+  return [
+    opsDocContent.trim(),
+    '',
+    '---',
+    '',
+    '## 设计工作表',
+    '',
+    ...tableLines,
+  ].join('\n');
+}
+
 export async function analyzeOpsDoc(opsDocContent, opts = {}) {
-  const gifts = await extractGiftsFromOpsDoc(opsDocContent, opts);
+  const { gifts, doc_title } = await extractGiftsFromOpsDoc(opsDocContent, opts);
   const rows = buildComplianceRows(gifts);
   const table = formatComplianceTable(rows);
-  return { gifts, rows, table };
+  return { gifts, rows, table, doc_title };
 }
 
 // ---------------------------------------------------------------------------

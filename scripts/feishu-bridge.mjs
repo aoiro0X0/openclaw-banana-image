@@ -24,6 +24,27 @@ export async function runLarkCli(args, { identity = 'user', execImpl = execFileA
 }
 
 /**
+ * Create a design document in the user's personal Feishu space.
+ * Returns { url, doc_id }.
+ */
+export async function createFeishuDesignDoc(title, markdownContent, { identity = 'user', execImpl = execFileAsync } = {}) {
+  if (!title || !title.trim()) {
+    throw new Error('title is required to create a Feishu design document.');
+  }
+  const result = await runLarkCli(
+    ['docs', '+create', '--title', title.trim(), '--markdown', markdownContent, '--wiki-space', 'my_library'],
+    { identity, execImpl },
+  );
+  if (!result.ok) {
+    throw new Error(`Feishu design doc creation failed: ${JSON.stringify(result).slice(0, 300)}`);
+  }
+  return {
+    url: result.data?.url ?? result.data?.doc_url ?? null,
+    doc_id: result.data?.doc_id ?? null,
+  };
+}
+
+/**
  * Fetch document content from a Feishu doc URL.
  * Returns the markdown string content.
  */
