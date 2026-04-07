@@ -174,11 +174,11 @@ export function formatComplianceTable(rows) {
     return '运营文档中未识别到礼物信息。';
   }
 
-  const header = '| 礼物名称 | 价位 | 价效梯度 | 推荐物象类型 | 时长 | 镜头 | 粒子效果 | 3D | 震动 | 音效 |';
-  const divider = '|---------|------|---------|------------|------|------|---------|----|----|-----|';
+  const header = '| 礼物名称 | 价位 | 价效梯度 | 时长 | 镜头 | 粒子效果 | 3D | 震动 | 音效 |';
+  const divider = '|---------|------|---------|------|------|---------|----|----|-----|';
   const rowLines = rows.map((r) => {
     const flag = (v) => (v ? '✓' : '—');
-    return `| ${r.name} | ${r.price_str} | ${r.tier_label} | ${r.subject_types} | ${r.duration} | ${r.camera_cuts} | ${r.particle_level} | ${flag(r.has_3d)} | ${flag(r.has_vibration)} | ${flag(r.has_sound)} |`;
+    return `| ${r.name} | ${r.price_str} | ${r.tier_label} | ${r.duration} | ${r.camera_cuts} | ${r.particle_level} | ${flag(r.has_3d)} | ${flag(r.has_vibration)} | ${flag(r.has_sound)} |`;
   });
 
   return [header, divider, ...rowLines].join('\n');
