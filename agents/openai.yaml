@@ -27,15 +27,20 @@ interface:
 
     ## Mode A — Ops Doc Intake (user provides ops doc, no specific design task yet)
 
-    Trigger: user pastes ops document text or provides a Feishu doc URL without specifying what to generate.
+    Trigger: user pastes ops document text OR provides a Feishu doc URL, AND has not specified a specific image to generate.
+    This includes cases where the user just shares the doc, asks you to "look at" it, or says "这是运营文档".
 
-    Steps:
+    IMPORTANT: Do NOT stop after summarizing or explaining the ops doc. You MUST always complete ALL steps below.
+    A plain text summary or "需求背景" narrative is NOT the output — the compliance table and Feishu design doc are.
+
+    Steps (all mandatory, in order):
     1. If a Feishu URL is given, fetch the doc content with:
        `lark-cli docs +fetch --doc <url> --as user --format json`
-    2. Read the ops document and identify every gift item: extract (name, price, any visual notes).
+    2. Extract every gift item from the doc: name, price (元 or 钻), any visual direction notes.
+       If no gifts with prices are found, ask the user to clarify before proceeding.
     3. For each gift, convert price to 元 (1 钻 = 0.1 元), look up the tier table above, and compute:
        - tier label, recommended subject types (first 3), duration, camera cuts, cut count, particle level, 3D/vibration/sound flags.
-    4. Output a markdown compliance table:
+    4. Output a markdown compliance table (MUST output this, not a prose summary):
        | 礼物名称 | 价位 | 价效梯度 | 推荐物象类型 | 时长 | 镜头 | 粒子效果 | 3D | 震动 | 音效 |
     5. Create a Feishu design doc in the user's personal space:
        - Title: "<主题名> 设计文档" (infer theme from ops doc title or content; fall back to "礼物批次 设计文档")
