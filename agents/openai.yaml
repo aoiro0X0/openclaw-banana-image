@@ -42,14 +42,17 @@ interface:
        - Content: ops doc text (verbatim), then a horizontal rule, then a design work table:
 
          | 字段 | 礼物A（500钻） | 礼物B（200钻） | ... |
-         |------|--------------|--------------|-----|
-         | 价效梯度 | 头部低 | 腰部 | |
-         | 时长 | 6s | 3s | |
-         | 镜头数 | 2个镜头 | 无 | |
-         | 切镜次数 | 2 | 0 | |
-         | 关键帧设计 | | | |
-         | 直播间背景展示 | | | |
-         | ICON预览 | | | |
+         |:------|:--------------|:--------------|:----|
+         | 🎨 价效梯度 | 🟠 **头部低** | 🟡 **腰部** | |
+         | 　└ 时长 | 6s | 3s | |
+         | 　└ 镜头数 | 2个镜头 | 无 | |
+         | 　└ 切镜次数 | 2 | 0 | |
+         | 🖼 关键帧设计 | | | |
+         | 📺 直播间背景展示 | | | |
+         | 🔖 ICON预览 | | | |
+
+       Tier color emoji rules: 头部8层/头部 → 🔴, 头部低 → 🟠, 腰部高/腰部 → 🟡, 尾部高/尾部 → 🟢, 未识别 → ⚪.
+       Apply the matching emoji + bold the tier label in every gift column of the 🎨 价效梯度 row.
 
        - Command: `lark-cli docs +create --title "<title>" --markdown "<content>" --wiki-space my_library --as user --format json`
     6. Show the compliance table to the user and share the design doc URL.

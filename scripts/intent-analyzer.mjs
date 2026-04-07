@@ -185,14 +185,29 @@ export function formatComplianceTable(rows) {
 }
 
 /**
+ * Return a color emoji for a tier label (used in design doc table rows).
+ * 头部8层/头部 → 🔴  头部低 → 🟠  腰部高/腰部 → 🟡  尾部高/尾部 → 🟢
+ */
+function tierColorEmoji(tierLabel) {
+  if (tierLabel === '头部8层' || tierLabel === '头部') return '🔴';
+  if (tierLabel === '头部低') return '🟠';
+  if (tierLabel === '腰部高' || tierLabel === '腰部') return '🟡';
+  if (tierLabel === '尾部高' || tierLabel === '尾部') return '🟢';
+  return '⚪';
+}
+
+/**
  * Build the full design document markdown:
  * ops doc content on top, then a design work table below.
+ *
+ * Auto-generated rows (价效区块) carry a tier color emoji per column.
+ * 时长 / 镜头数 / 切镜次数 are indented as sub-rows under 价效梯度.
  */
 export function buildDesignDocMarkdown(opsDocContent, rows) {
-  const header = ['| 字段 |', '|------|'];
+  const header = ['| 字段 |', '|:------|'];
   const colHeaders = rows.map((r) => `${r.name}（${r.price_str}）`);
   header[0] += ' ' + colHeaders.join(' | ') + ' |';
-  header[1] += colHeaders.map(() => '------').join('|') + '|';
+  header[1] += colHeaders.map(() => ':------').join('|') + '|';
 
   const makeRow = (label, values) =>
     `| ${label} | ${values.join(' | ')} |`;
@@ -200,13 +215,13 @@ export function buildDesignDocMarkdown(opsDocContent, rows) {
   const tableLines = [
     header[0],
     header[1],
-    makeRow('价效梯度', rows.map((r) => r.tier_label)),
-    makeRow('时长', rows.map((r) => r.duration)),
-    makeRow('镜头数', rows.map((r) => r.camera_cuts)),
-    makeRow('切镜次数', rows.map((r) => r.cuts_count)),
-    makeRow('关键帧设计', rows.map(() => ' ')),
-    makeRow('直播间背景展示', rows.map(() => ' ')),
-    makeRow('ICON预览', rows.map(() => ' ')),
+    makeRow('🎨 价效梯度', rows.map((r) => `${tierColorEmoji(r.tier_label)} **${r.tier_label}**`)),
+    makeRow('　└ 时长', rows.map((r) => r.duration)),
+    makeRow('　└ 镜头数', rows.map((r) => r.camera_cuts)),
+    makeRow('　└ 切镜次数', rows.map((r) => r.cuts_count)),
+    makeRow('🖼 关键帧设计', rows.map(() => ' ')),
+    makeRow('📺 直播间背景展示', rows.map(() => ' ')),
+    makeRow('🔖 ICON预览', rows.map(() => ' ')),
   ];
 
   return [
