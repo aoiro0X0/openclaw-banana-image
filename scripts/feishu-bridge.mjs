@@ -16,9 +16,11 @@ const execFileAsync = promisify(execFile);
  */
 export async function runLarkCli(args, { identity = 'user', execImpl = execFileAsync } = {}) {
   const fullArgs = [...args, '--as', identity, '--format', 'json'];
+  // On Windows, npm-installed CLIs are .cmd wrappers — execFile needs shell:true or the .cmd extension.
   const { stdout } = await execImpl('lark-cli', fullArgs, {
     encoding: 'utf8',
     timeout: 30000,
+    shell: true,
   });
   return JSON.parse(stdout.trim());
 }
