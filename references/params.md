@@ -6,9 +6,12 @@
 - `task`: required natural-language request (Chinese or English)
 - `apiKey`: optional one-time API key; otherwise read `ZENMUX_API_KEY`, then `GEMINI_API_KEY`, then prompt
 - `inputImagePath`: optional local file path for `img2img`, `inpaint`, or background replacement
+- `replyTargetImagePath`: optional local file path for the image being replied to in Feishu; highest priority for continuous edits
+- `threadId`: optional thread/chat identifier used to restore the latest successful image in the same conversation
+- `continueLastImage`: optional boolean forcing the request to continue from the latest successful image in the current thread
 - `maskPath`: optional local file path; valid only with `inputImagePath`
-- `referenceImagePaths`: optional list of local file paths
-- `referenceLabels`: optional list of labels paired with `referenceImagePaths` (e.g. `["取构图", "取配色"]`)
+- `referenceImagePaths`: optional list of local file paths — repeat `--reference-image-path` once per file
+- `referenceLabels`: optional list of labels paired with `referenceImagePaths` — repeat `--reference-label` once per label (e.g. `"取构图"`, `"取配色"`)
 - `size`: optional target size hint such as `1024x1024`
 - `steps`: optional integer hint retained for metadata
 - `seed`: optional integer
@@ -38,12 +41,11 @@
 | `GEMINI_API_KEY` | Image API key (fallback) |
 | `ZENMUX_BASE_URL` | Image API base URL override |
 | `GOOGLE_GEMINI_BASE_URL` | Image API base URL override (fallback) |
-| `TEXT_LLM_API_KEY` | Text LLM API key for intent analysis |
-| `TEXT_LLM_BASE_URL` | Text LLM base URL (default: https://api.openai.com/v1) |
-| `TEXT_LLM_MODEL` | Text LLM model name (default: gpt-4o) |
 | `OPENCLAW_BANANA_MODEL` | Override image model |
 | `ZENMUX_IMAGE_MODEL` | Override image model (fallback) |
 | `BANANA_MODEL_REGISTRY` | JSON string to extend/replace the model registry |
+
+Intent analysis is performed by the OpenClaw Agent directly — no `TEXT_LLM_*` environment variables are used by the script.
 
 ## Output Contract
 
@@ -63,17 +65,37 @@ The runner returns JSON with:
 - `optimized_prompt`: the prompt actually sent to the image API
 - `original_task`: the original user task string
 - `model_routing`: `{ modelId, reason }` explaining model selection
+- `image_context_source`: one of `reply_target`, `explicit_attachment`, `thread_last_image`, or `none`
 - `feishu_delivery`: `{ ok, errors }` if `--feishu-chat-id` was set
 
-### follow_up_required response (when intent analysis needs more info)
+### follow_up_required response (when more edit context is needed)
 
 ```json
 {
   "status": "follow_up_required",
-  "follow_up_question": "请问...",
-  "intent_summary": "...",
-  "price_tier_analysis": {}
+  "follow_up_question": "当前会话里没有可继续编辑的图片，请回复某张图或重新发送图片。",
+  "image_context_source": "none",
+  "original_task": "去掉背景，换成纯绿底"
 }
+```
+
+## gifts-json Schema
+
+Each item in the `--gifts-json` array:
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `name` | string | yes | Gift display name (e.g. `"毛绒花束"`) |
+| `price_str` | string | yes | Price with unit (e.g. `"99钻"`, `"500元"`, `"2000"`) |
+| `subject_description` | string | no | Visual/design direction from the ops doc |
+
+Example:
+
+```json
+[
+  { "name": "毛绒花束", "price_str": "99钻", "subject_description": "毛茸茸花束，暖色系，梦幻风格" },
+  { "name": "冬日暖阳", "price_str": "500元", "subject_description": "阳光穿透云层，大型装置，写实光效" }
+]
 ```
 
 ## Price Unit Conversion

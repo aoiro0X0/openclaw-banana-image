@@ -1,5 +1,6 @@
 #!/usr/bin/env node
-import { access, mkdir, readFile, stat, writeFile } from 'node:fs/promises';
+import { access, copyFile, mkdir, readFile, stat, writeFile } from 'node:fs/promises';
+import { randomUUID } from 'node:crypto';
 import { existsSync } from 'node:fs';
 import { basename, extname, resolve } from 'node:path';
 import { parseArgs } from 'node:util';
@@ -8,16 +9,18 @@ import readline from 'node:readline/promises';
 import { routeModel } from './model-router.mjs';
 import { buildComplianceRows, buildDesignDocMarkdown } from './intent-analyzer.mjs';
 import { createFeishuDesignDoc } from './feishu-bridge.mjs';
+import { maybePersistThreadLastImage, resolveImageContext } from './image-context.mjs';
 
 export const DEFAULT_BASE_URL = 'https://zenmux.ai/api/vertex-ai';
 export const DEFAULT_MODEL = 'google/gemini-3-pro-image-preview';
 export const DEFAULT_API_VERSION = 'v1';
+export const DEFAULT_OPENCLAW_MEDIA_SUBDIR = ['.openclaw', 'media', 'tool-image-generation'];
 export const API_KEY_ENV_NAMES = ['ZENMUX_API_KEY', 'GEMINI_API_KEY'];
 export const BASE_URL_ENV_NAMES = ['ZENMUX_BASE_URL', 'GOOGLE_GEMINI_BASE_URL'];
 export const MODEL_ENV_NAMES = ['OPENCLAW_BANANA_MODEL', 'ZENMUX_IMAGE_MODEL'];
 
-const CN_BACKGROUND_WORD = '\u80cc\u666f';
-const CN_BACKGROUND_REPLACE_VERBS = ['\u6362', '\u66ff\u6362', '\u62a0\u56fe'];
+const CN_BACKGROUND_WORD = '背景';
+const CN_BACKGROUND_REPLACE_VERBS = ['换', '替换', '抠图'];
 const EN_BACKGROUND_REPLACE_PATTERNS = [
   'replace background',
   'background replace',
@@ -101,6 +104,30 @@ export function resolveApiVersion(apiVersion) {
   return DEFAULT_API_VERSION;
 }
 
+export function resolveOpenClawMediaDir(openClawMediaDir, env = process.env) {
+  if (typeof openClawMediaDir === 'string' && openClawMediaDir.trim()) {
+    return resolve(openClawMediaDir.trim());
+  }
+
+  const explicitEnvDir = resolveFirstEnv(['OPENCLAW_MEDIA_DIR'], env);
+  if (explicitEnvDir) {
+    return resolve(explicitEnvDir);
+  }
+
+  const homeDir = resolveFirstEnv(['USERPROFILE', 'HOME'], env);
+  if (homeDir) {
+    return resolve(homeDir, ...DEFAULT_OPENCLAW_MEDIA_SUBDIR);
+  }
+
+  const homeDrive = env.HOMEDRIVE;
+  const homePath = env.HOMEPATH;
+  if (typeof homeDrive === 'string' && typeof homePath === 'string' && homeDrive && homePath) {
+    return resolve(`${homeDrive}${homePath}`, ...DEFAULT_OPENCLAW_MEDIA_SUBDIR);
+  }
+
+  return null;
+}
+
 export function resolveApiKeyFromEnv(env = process.env) {
   return resolveFirstEnv(API_KEY_ENV_NAMES, env);
 }
@@ -127,13 +154,13 @@ export async function ensureExistingFile(pathValue, label) {
   if (!pathValue) {
     return null;
   }
-  const resolved = resolve(pathValue);
-  await access(resolved);
-  const fileStat = await stat(resolved);
+  const resolvedPath = resolve(pathValue);
+  await access(resolvedPath);
+  const fileStat = await stat(resolvedPath);
   if (!fileStat.isFile()) {
-    throw new Error(`${label} is not a file: ${resolved}`);
+    throw new Error(`${label} is not a file: ${resolvedPath}`);
   }
-  return resolved;
+  return resolvedPath;
 }
 
 export async function buildWorkflowRequest({
@@ -146,6 +173,7 @@ export async function buildWorkflowRequest({
   steps,
   seed,
   outputDir,
+  openClawMediaDir,
   model,
   apiVersion,
   promptForApiKey,
@@ -164,7 +192,7 @@ export async function buildWorkflowRequest({
   return {
     task: task.trim(),
     apiKey: await resolveApiKey(apiKey, { promptForApiKey, env }),
-    mode: classifyMode(task, { inputImagePath, maskPath }),
+    mode: classifyMode(task, { inputImagePath: resolvedInput, maskPath: resolvedMask }),
     inputImagePath: resolvedInput,
     maskPath: resolvedMask,
     referenceImagePaths: resolvedReferences,
@@ -174,6 +202,7 @@ export async function buildWorkflowRequest({
     model: resolveModel(model, env),
     apiVersion: resolveApiVersion(apiVersion),
     outputDir: outputDir ? resolve(outputDir) : resolve(process.cwd(), 'output', 'banana'),
+    openClawMediaDir: resolveOpenClawMediaDir(openClawMediaDir, env),
   };
 }
 
@@ -215,13 +244,29 @@ export async function encodeFile(filePath) {
 }
 
 export function buildPromptText(request) {
+  if (request.inputImagePath) {
+    if (request.mode === 'background-replace') {
+      return [
+        'Edit the provided image.',
+        'Preserve the main subject, composition, and styling unless explicitly changed.',
+        `Only replace the background according to this instruction: ${request.task.trim()}`,
+      ].join('\n\n');
+    }
+    if (request.mode === 'inpaint') {
+      return [
+        'Edit the provided image.',
+        'Use the provided mask image as an edit mask. Only change the masked region and preserve everything else.',
+        `Follow this instruction: ${request.task.trim()}`,
+      ].join('\n\n');
+    }
+    return [
+      'Edit the provided image.',
+      'Preserve the subject and composition unless the instruction explicitly asks to change them.',
+      `Follow this instruction: ${request.task.trim()}`,
+    ].join('\n\n');
+  }
+
   const parts = [request.task.trim()];
-  if (request.mode === 'inpaint') {
-    parts.push('Use the provided mask image as an edit mask. Only change the masked region and preserve everything else.');
-  }
-  if (request.mode === 'background-replace') {
-    parts.push('Replace the background while preserving the main subject.');
-  }
   if (request.referenceImagePaths.length > 0) {
     parts.push('Use the reference images for style and composition guidance.');
   }
@@ -357,6 +402,7 @@ export async function imageBytesFromItem(item, { fetchImpl }) {
       return Buffer.from(value, 'base64');
     }
   }
+
   if (typeof item.url === 'string' && item.url.length > 0) {
     const response = await fetchImpl(item.url, {
       headers: { Accept: 'image/*' },
@@ -366,6 +412,7 @@ export async function imageBytesFromItem(item, { fetchImpl }) {
     }
     return Buffer.from(await response.arrayBuffer());
   }
+
   throw new Error('Image item did not include base64 data or a downloadable URL.');
 }
 
@@ -413,13 +460,27 @@ export function buildReproInfo(request, responsePayload) {
   };
 }
 
-export async function buildOpenClawMedia(outputFiles) {
-  const mediaUrls = [];
-  for (const filePath of outputFiles) {
-    const bytes = await readFile(filePath);
-    const mimeType = guessMimeType(filePath);
-    mediaUrls.push(`data:${mimeType};base64,${bytes.toString('base64')}`);
+export function buildHostedMediaFilename(filePath, index) {
+  const extension = extname(filePath) || '.png';
+  return `image-${index}---${randomUUID()}${extension}`;
+}
+
+export async function buildOpenClawMedia(outputFiles, { mediaDir } = {}) {
+  if (!mediaDir) {
+    return {
+      mediaUrls: [...outputFiles],
+      ...(outputFiles[0] ? { mediaUrl: outputFiles[0] } : {}),
+    };
   }
+
+  await mkdir(mediaDir, { recursive: true });
+  const mediaUrls = [];
+  for (const [index, filePath] of outputFiles.entries()) {
+    const hostedPath = resolve(mediaDir, buildHostedMediaFilename(filePath, index + 1));
+    await copyFile(filePath, hostedPath);
+    mediaUrls.push(hostedPath);
+  }
+
   return {
     mediaUrls,
     ...(mediaUrls[0] ? { mediaUrl: mediaUrls[0] } : {}),
@@ -531,7 +592,9 @@ export async function runWorkflow(request, {
       fetchImpl,
     });
     result.paths = [...result.output_files];
-    result.media = await buildOpenClawMedia(result.output_files);
+    result.media = await buildOpenClawMedia(result.output_files, {
+      mediaDir: request.openClawMediaDir,
+    });
     result.mediaUrls = result.media.mediaUrls;
     result.mediaUrl = result.media.mediaUrl ?? null;
     result.request_summary = buildRequestSummary(request, responsePayload);
@@ -556,6 +619,9 @@ export function parseCliArgs(argv) {
       'api-version': { type: 'string' },
       'api-key': { type: 'string' },
       'input-image-path': { type: 'string' },
+      'reply-target-image-path': { type: 'string' },
+      'thread-id': { type: 'string' },
+      'continue-last-image': { type: 'boolean', default: false },
       'mask-path': { type: 'string' },
       'reference-image-path': { type: 'string', multiple: true },
       'reference-label': { type: 'string', multiple: true },
@@ -567,12 +633,34 @@ export function parseCliArgs(argv) {
       'api-key-prefix': { type: 'string', default: 'Bearer ' },
       'create-design-doc': { type: 'boolean', default: false },
       title: { type: 'string' },
+      'ops-doc-link': { type: 'string' },
+      'theme-summary': { type: 'string' },
       'ops-doc-text': { type: 'string' },
       'gifts-json': { type: 'string' },
+      'gifts-json-path': { type: 'string' },
       help: { type: 'boolean', default: false },
     },
   });
   return values;
+}
+
+export async function parseDesignDocGifts(giftsJsonArg, giftsJsonPathArg) {
+  if (typeof giftsJsonPathArg === 'string' && giftsJsonPathArg.trim()) {
+    const fileContent = await readFile(resolve(giftsJsonPathArg.trim()), 'utf8');
+    return JSON.parse(fileContent);
+  }
+
+  if (typeof giftsJsonArg !== 'string' || !giftsJsonArg.trim()) {
+    throw new Error('--gifts-json is required with --create-design-doc.');
+  }
+
+  const trimmed = giftsJsonArg.trim();
+  if (trimmed.startsWith('@') && trimmed.length > 1) {
+    const fileContent = await readFile(resolve(trimmed.slice(1)), 'utf8');
+    return JSON.parse(fileContent);
+  }
+
+  return JSON.parse(trimmed);
 }
 
 export function helpText() {
@@ -588,27 +676,38 @@ export function helpText() {
     `  image model envs: ${MODEL_ENV_NAMES.join(', ')}, GEMINI_MODEL (image models only)`,
     '',
     'Usage:',
-    '  node ./scripts/banana-image.mjs --task "创建一个礼物设计图"',
+    '  node ./scripts/banana-image.mjs --task "Create a gift concept image"',
     '',
     'Core options:',
-    '  --task                  Natural-language task description (required). The Agent handles intent analysis before calling this script.',
-    '  --model                 Image-capable model name. Defaults to google/gemini-3-pro-image-preview.',
-    '  --model-mode            Model selection mode: auto (default) or pick.',
-    '  --api-key               One-time API key.',
-    '  --input-image-path      Local input image path.',
-    '  --mask-path             Local mask image path for inpaint.',
-    '  --reference-image-path  Repeatable local reference image path.',
-    '  --reference-label       Repeatable label for reference image (e.g. "取构图"). Paired with --reference-image-path.',
-    '  --size                  Optional size hint.',
-    '  --seed                  Optional numeric seed.',
-    '  --output-dir            Output directory. Default: ./output/banana',
+    '  --task                    Natural-language task description.',
+    '  --model                   Image-capable model name.',
+    '  --model-mode              Model selection mode: auto or pick.',
+    '  --api-key                 One-time API key.',
+    '  --input-image-path        Local input image path.',
+    '  --reply-target-image-path Reply target image path resolved by the caller.',
+    '  --thread-id               Thread/chat identifier for last-image continuation.',
+    '  --continue-last-image     Continue editing the latest successful image in the current thread.',
+    '  --mask-path               Local mask image path for inpaint.',
+    '  --reference-image-path    Repeatable local reference image path.',
+    '  --size                    Optional size hint.',
+    '  --seed                    Optional numeric seed.',
+    '  --output-dir              Output directory. Default: ./output/banana',
+    '',
+    'Design doc options:',
+    '  --create-design-doc       Create a Feishu design doc instead of generating images.',
+    '  --title                   Base title for the design doc.',
+    '  --ops-doc-link            Ops document link to show at the top of the design doc.',
+    '  --theme-summary           Short summary shown at the top of the design doc.',
+    '  --ops-doc-text            Fallback source for a short summary if none was provided.',
+    '  --gifts-json              Inline JSON array or @path to the gifts JSON file.',
+    '  --gifts-json-path         Explicit gifts JSON file path.',
     '',
     'Advanced options:',
-    '  --base-url              Vertex AI base URL.',
-    '  --endpoint              Override the generateContent endpoint path.',
-    '  --api-version           API version string. Default: v1',
-    '  --api-key-header        Auth header name. Default: Authorization',
-    '  --api-key-prefix        Auth header prefix. Default: Bearer',
+    '  --base-url                Vertex AI base URL.',
+    '  --endpoint                Override the generateContent endpoint path.',
+    '  --api-version             API version string. Default: v1',
+    '  --api-key-header          Auth header name. Default: Authorization',
+    '  --api-key-prefix          Auth header prefix. Default: Bearer',
   ].join('\n');
 }
 
@@ -624,6 +723,11 @@ export async function promptForApiKey(prompt) {
   }
 }
 
+function normalizeDesignDocTitle(title) {
+  const baseTitle = typeof title === 'string' && title.trim() ? title.trim() : '礼物批次';
+  return baseTitle.endsWith('设计文档') ? baseTitle : `${baseTitle} 设计文档`;
+}
+
 export async function main(argv = process.argv.slice(2)) {
   const args = parseCliArgs(argv);
   if (args.help) {
@@ -631,32 +735,35 @@ export async function main(argv = process.argv.slice(2)) {
     return 0;
   }
 
-  // Design doc creation mode — Agent passes structured gift data, script builds
-  // the lark-table markdown and creates the Feishu doc internally to avoid shell
-  // escaping issues with long markdown content.
   if (args['create-design-doc']) {
-    if (!args['gifts-json']) {
-      process.stderr.write('--gifts-json is required with --create-design-doc.\n');
+    if (!args['gifts-json'] && !args['gifts-json-path']) {
+      process.stderr.write('--gifts-json or --gifts-json-path is required with --create-design-doc.\n');
       return 1;
     }
+
     let gifts;
     try {
-      gifts = JSON.parse(args['gifts-json']);
+      gifts = await parseDesignDocGifts(args['gifts-json'], args['gifts-json-path']);
     } catch {
-      process.stderr.write('--gifts-json must be valid JSON.\n');
+      process.stderr.write('--gifts-json must be valid JSON or a readable @file path.\n');
       return 1;
     }
-    const opsDocText = args['ops-doc-text'] ?? '';
-    const title = (args.title ?? '礼物批次') + ' 设计文档';
+
+    const docMeta = {
+      opsDocLink: args['ops-doc-link'] ?? '',
+      themeSummary: args['theme-summary'] ?? '',
+      opsDocText: args['ops-doc-text'] ?? '',
+    };
     const rows = buildComplianceRows(gifts);
-    const markdownContent = buildDesignDocMarkdown(opsDocText, rows);
+    const markdownContent = buildDesignDocMarkdown(docMeta, rows);
+
     try {
-      const docResult = await createFeishuDesignDoc(title, markdownContent);
+      const docResult = await createFeishuDesignDoc(normalizeDesignDocTitle(args.title), markdownContent);
       process.stdout.write(`${JSON.stringify({ ok: true, url: docResult.url, doc_id: docResult.doc_id }, null, 2)}\n`);
       return 0;
-    } catch (err) {
-      process.stderr.write(`Design doc creation failed: ${err.message}\n`);
-      process.stdout.write(`${JSON.stringify({ ok: false, error: err.message }, null, 2)}\n`);
+    } catch (error) {
+      process.stderr.write(`Design doc creation failed: ${error.message}\n`);
+      process.stdout.write(`${JSON.stringify({ ok: false, error: error.message }, null, 2)}\n`);
       return 1;
     }
   }
@@ -667,13 +774,32 @@ export async function main(argv = process.argv.slice(2)) {
   }
 
   const referenceImagePaths = args['reference-image-path'] ?? [];
+  const imageContext = await resolveImageContext({
+    task: args.task,
+    inputImagePath: args['input-image-path'],
+    replyTargetImagePath: args['reply-target-image-path'],
+    continueLastImage: args['continue-last-image'],
+    threadId: args['thread-id'],
+    env: process.env,
+  });
 
-  // Model routing (mode derived from task + input image presence)
+  if (imageContext.followUpQuestion) {
+    process.stdout.write(`${JSON.stringify({
+      status: 'follow_up_required',
+      follow_up_question: imageContext.followUpQuestion,
+      image_context_source: imageContext.source,
+      original_task: args.task,
+    }, null, 2)}\n`);
+    return 0;
+  }
+
+  const resolvedInputImagePath = imageContext.inputImagePath;
+
   const { modelId, reason: modelReason } = routeModel({
     modelMode: args['model-mode'] ?? 'auto',
     explicitModel: args.model ?? null,
     intentMode: classifyMode(args.task, {
-      inputImagePath: args['input-image-path'],
+      inputImagePath: resolvedInputImagePath,
       maskPath: args['mask-path'],
     }),
     recommendedModel: null,
@@ -683,7 +809,7 @@ export async function main(argv = process.argv.slice(2)) {
   const request = await buildWorkflowRequest({
     task: args.task,
     apiKey: args['api-key'],
-    inputImagePath: args['input-image-path'],
+    inputImagePath: resolvedInputImagePath,
     maskPath: args['mask-path'],
     referenceImagePaths,
     size: args.size,
@@ -704,6 +830,14 @@ export async function main(argv = process.argv.slice(2)) {
   });
 
   result.model_routing = { modelId, reason: modelReason };
+  result.image_context_source = imageContext.source;
+
+  await maybePersistThreadLastImage({
+    threadId: args['thread-id'],
+    result,
+    task: args.task,
+    env: process.env,
+  });
 
   process.stdout.write(`${JSON.stringify(result, null, 2)}\n`);
   return result.error ? 1 : 0;

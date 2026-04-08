@@ -3,100 +3,148 @@
  * Price-tier knowledge base and local compliance helpers for openclaw-gift-design.
  *
  * All intent analysis and document extraction is handled by the OpenClaw Agent.
- * This module only contains pure local functions that do not require any LLM or API key.
+ * This module only contains pure local helpers that do not require any LLM or API key.
  */
 
-// ---------------------------------------------------------------------------
-// Price-tier knowledge base (Douyin Live gift spec, updated 2026-01-09)
-// 1 钻 = 0.1 元
-// ---------------------------------------------------------------------------
 export const PRICE_TIERS = [
+  {
+    label: '头部8层',
+    minYuan: 3000,
+    maxYuan: 10000,
+    subjectTypes: ['星际/虚拟交通工具', '虚拟豪华大型装置', '大型神性动物', '神性/虚拟人物'],
+    durationLabel: '9s',
+    screenOccupancy: '3/5屏',
+    cameraCuts: '4',
+    particleLevel: '特效光效',
+    has3D: true,
+    hasVibration: true,
+    hasSound: true,
+  },
   {
     label: '头部8层',
     minYuan: 2000,
     maxYuan: 3000,
-    subjectTypes: ['星际/虚拟交通工具', '虚拟豪华大型装置', '大型神性动物（尊贵身份、顶级祥瑞）', '神性/虚拟人物（权利主宰、家国英雄）'],
-    sceneTypes: ['大型壮阔自然/虚拟/奇幻场景'],
-    durationSeconds: 9,
-    cameraCuts: '1-4个镜头，多镜头叙事',
-    particleLevel: '特效光效，粒子种类/变化多，真实感强',
+    subjectTypes: ['星际/虚拟交通工具', '虚拟豪华大型装置', '大型神性动物', '神性/虚拟人物'],
+    durationLabel: '9s',
+    screenOccupancy: '3/5屏',
+    cameraCuts: '4',
+    particleLevel: '特效光效',
     has3D: true,
     hasVibration: true,
     hasSound: true,
   },
   {
-    label: '头部',
-    minYuan: 500,
+    label: '头部8层',
+    minYuan: 1500,
     maxYuan: 2000,
-    subjectTypes: ['大型神性动物', '大型装置', '虚拟人物'],
-    sceneTypes: ['壮阔自然场景', '奇幻场景'],
-    durationSeconds: 9,
-    cameraCuts: '多镜头',
-    particleLevel: '特效光效，粒子丰富',
+    subjectTypes: ['虚拟/权利象征大型动物', '大型现实/虚拟场景'],
+    durationLabel: '8s',
+    screenOccupancy: '1/2屏',
+    cameraCuts: '4',
+    particleLevel: '特效光效',
     has3D: true,
     hasVibration: true,
     hasSound: true,
   },
   {
-    label: '头部低',
-    minYuan: 100,
-    maxYuan: 500,
-    subjectTypes: ['中高端消费品', '小型设施', '舞台基建', '小动物群组', '中小型动物', '神兽幼崽', '单人侧脸', '双人背影'],
-    sceneTypes: ['风景（周边场景小）'],
-    durationSeconds: 6,
-    cameraCuts: '2个镜头',
-    particleLevel: '中高粒子',
+    minYuan: 1000,
+    label: '头部8层',
+    maxYuan: 1500,
+    subjectTypes: ['星际/虚拟交通工具', '大型豪华装置设施'],
+    durationLabel: '7s',
+    screenOccupancy: '1/2屏',
+    cameraCuts: '4',
+    particleLevel: '特效光效',
     has3D: true,
-    hasVibration: false,
+    hasVibration: true,
     hasSound: true,
   },
   {
-    label: '腰部高',
+    label: '中头部6-7层',
+    minYuan: 600,
+    maxYuan: 1000,
+    subjectTypes: ['豪华交通工具', '大型装置设施', '大型动物', '单双人/多人形象'],
+    durationLabel: '6s',
+    screenOccupancy: '2/5屏',
+    cameraCuts: '3',
+    particleLevel: '高价粒子：无人机（动态/混色）',
+    has3D: false,
+    hasVibration: false,
+    hasSound: false,
+  },
+  {
+    label: '中头部6-7层',
+    minYuan: 300,
+    maxYuan: 600,
+    subjectTypes: ['大型交通工具', '中型装置设施', '中小型动物群组', '单人正脸/双人正脸短停'],
+    durationLabel: '5s',
+    screenOccupancy: '2/5屏',
+    cameraCuts: '1',
+    particleLevel: '无',
+    has3D: false,
+    hasVibration: false,
+    hasSound: false,
+  },
+  {
+    label: '中头部6-7层',
+    minYuan: 100,
+    maxYuan: 300,
+    subjectTypes: ['交通工具', '中高端消费品', '小型设施', '小动物群组/中小型动物'],
+    durationLabel: '4s',
+    screenOccupancy: '1/3屏',
+    cameraCuts: '1',
+    particleLevel: '无',
+    has3D: false,
+    hasVibration: false,
+    hasSound: false,
+  },
+  {
+    label: '中头部6-7层',
     minYuan: 50,
     maxYuan: 100,
-    subjectTypes: ['交通工具', '小型设施', '舞台基建', '日常消费品', '植物', '豪华餐饮', '小动物群组', '中小型动物', '神兽幼崽', '拟人形象', '人物肢体'],
-    sceneTypes: [],
-    durationSeconds: 4,
-    cameraCuts: '无',
-    particleLevel: '中价粒子：烟花/LED，静态/双色',
+    subjectTypes: ['交通工具/小型设施/舞台基建', '日常消费品/植物/豪华餐饮', '拟人形象/人物肢体'],
+    durationLabel: '4s',
+    screenOccupancy: '无',
+    cameraCuts: '0',
+    particleLevel: '中价粒子：烟花/LED（静态/双色）',
     has3D: false,
     hasVibration: false,
     hasSound: false,
   },
   {
-    label: '腰部',
+    label: '腰部3-5层',
     minYuan: 9.9,
     maxYuan: 50,
-    subjectTypes: ['食物', '植物', '日常消费品', '昆虫', '小动物群组', '中小型动物', '神兽幼崽', '拟人形象', '人物肢体'],
-    sceneTypes: [],
-    durationSeconds: 3,
-    cameraCuts: '无',
-    particleLevel: '低价粒子：雪/彩带，静态/单色',
+    subjectTypes: ['食物/植物', '日常消费品'],
+    durationLabel: '3s',
+    screenOccupancy: '1/4屏',
+    cameraCuts: '0',
+    particleLevel: '低价粒子：雪/彩带（静态/单色）',
     has3D: false,
     hasVibration: false,
     hasSound: false,
   },
   {
-    label: '尾部高',
+    label: '腰部3-5层',
     minYuan: 2,
     maxYuan: 9.9,
-    subjectTypes: ['日常消费品', '食物', '植物', '符号'],
-    sceneTypes: [],
-    durationSeconds: 1.5,
-    cameraCuts: '无',
+    subjectTypes: ['日常消费品/食物/植物/符号'],
+    durationLabel: '1-2s',
+    screenOccupancy: '仅托盘+外层',
+    cameraCuts: '0',
     particleLevel: '仅托盘+外层',
     has3D: false,
     hasVibration: false,
     hasSound: false,
   },
   {
-    label: '尾部',
+    label: '尾部1-2层',
     minYuan: 0,
     maxYuan: 2,
     subjectTypes: ['符号'],
-    sceneTypes: [],
-    durationSeconds: 0,
-    cameraCuts: '无',
+    durationLabel: '0s',
+    screenOccupancy: '仅托盘',
+    cameraCuts: '0',
     particleLevel: '仅托盘',
     has3D: false,
     hasVibration: false,
@@ -104,16 +152,45 @@ export const PRICE_TIERS = [
   },
 ];
 
+const DASH = '—';
+const DESIGN_TABLE_TOTAL_WIDTH = 760;
+const DESIGN_LABEL_COL_WIDTH = 96;
+const HIGH_SPEED_THEME_KEYWORDS = [
+  '跑车',
+  '竞速',
+  '追逐',
+  '追击',
+  '极速',
+  '疾驰',
+  '飙车',
+  '速度感',
+  '紧张刺激',
+  '冲刺',
+  '飞驰',
+  'racing',
+  'speed',
+  'high-speed',
+  'chase',
+  'turbo',
+];
+const DESIGN_GROUP_ROW_DEFS = [
+  { label: '屏占比', formatter: compactScreenOccupancyValue },
+  { label: '时长', formatter: compactDurationValue },
+  { label: '镜头数', formatter: compactCameraValue },
+];
+const DESIGN_EDITABLE_ROW_LABELS = ['关键帧设计', '直播间背景展示', 'ICON预览'];
+
 /**
  * Convert price string to yuan (handles 元 and 钻 units).
- * Examples: "500元" → 500, "5000钻" → 500, "200" → 200
+ * Examples: "500元" -> 500, "5000钻" -> 500, "200" -> 200
  */
 export function parsePriceToYuan(priceStr) {
   if (!priceStr || typeof priceStr !== 'string') return null;
   const cleaned = priceStr.trim().replace(/,/g, '');
   const match = cleaned.match(/([\d.]+)\s*(元|钻)?/);
   if (!match) return null;
-  const value = parseFloat(match[1]);
+  const value = Number.parseFloat(match[1]);
+  if (Number.isNaN(value)) return null;
   const unit = match[2] ?? '元';
   return unit === '钻' ? value * 0.1 : value;
 }
@@ -123,21 +200,67 @@ export function parsePriceToYuan(priceStr) {
  */
 export function matchPriceTier(yuan) {
   if (yuan === null || yuan === undefined) return null;
-  return PRICE_TIERS.find((t) => yuan >= t.minYuan && yuan <= t.maxYuan) ?? null;
+  return PRICE_TIERS.find((tier) => yuan >= tier.minYuan && yuan <= tier.maxYuan) ?? null;
 }
 
 /**
- * Extract a cut count string from a cameraCuts description.
- * Examples: "无" → "0", "多镜头" → "多", "2个镜头" → "2", "1-4个镜头" → "1-4"
+ * Extract a compact cut-count label from the camera description.
  */
 export function parseCutsCount(cameraCuts) {
-  if (!cameraCuts || cameraCuts === '无') return '0';
+  if (!cameraCuts || cameraCuts === '无' || cameraCuts === '0') return '0';
   const rangeMatch = cameraCuts.match(/(\d+-\d+)/);
   if (rangeMatch) return rangeMatch[1];
   const numMatch = cameraCuts.match(/(\d+)/);
   if (numMatch) return numMatch[1];
   if (cameraCuts.includes('多')) return '多';
   return cameraCuts;
+}
+
+export function cameraUpperBoundByPriceYuan(yuan) {
+  if (yuan === null || yuan === undefined || Number.isNaN(yuan)) {
+    return DASH;
+  }
+  if (yuan < 9.9) {
+    return '0';
+  }
+  if (yuan < 100) {
+    return '1';
+  }
+  if (yuan < 600) {
+    return '≤2';
+  }
+  if (yuan >= 1000) {
+    return '≤4';
+  }
+  return '≤3';
+}
+
+export function isHighSpeedTheme(gift) {
+  const combinedText = [gift?.name, gift?.subject_description]
+    .filter((value) => typeof value === 'string' && value.trim())
+    .join(' ')
+    .toLowerCase();
+
+  return HIGH_SPEED_THEME_KEYWORDS.some((keyword) => combinedText.includes(keyword.toLowerCase()));
+}
+
+export function cameraUpperBoundForGift(yuan, gift) {
+  if (yuan === null || yuan === undefined || Number.isNaN(yuan)) {
+    return DASH;
+  }
+  if (yuan < 9.9) {
+    return '0';
+  }
+  if (yuan < 100) {
+    return '1';
+  }
+  if (yuan < 600) {
+    return '≤2';
+  }
+  if (yuan >= 1000) {
+    return '≤4';
+  }
+  return isHighSpeedTheme(gift) ? '≤4' : '≤3';
 }
 
 /**
@@ -148,16 +271,18 @@ export function buildComplianceRows(gifts) {
   return gifts.map((gift) => {
     const yuan = parsePriceToYuan(gift.price_str);
     const tier = yuan !== null ? matchPriceTier(yuan) : null;
+    const cameraUpperBound = cameraUpperBoundForGift(yuan, gift);
     return {
       name: gift.name,
       price_str: gift.price_str,
       price_yuan: yuan,
       tier_label: tier?.label ?? '未识别',
-      subject_types: tier?.subjectTypes.slice(0, 3).join(' / ') ?? '—',
-      duration: tier ? `${tier.durationSeconds}s` : '—',
-      camera_cuts: tier?.cameraCuts ?? '—',
-      cuts_count: parseCutsCount(tier?.cameraCuts ?? ''),
-      particle_level: tier?.particleLevel ?? '—',
+      subject_types: tier?.subjectTypes.slice(0, 3).join(' / ') ?? DASH,
+      duration: tier?.durationLabel ?? DASH,
+      screen_occupancy: tier?.screenOccupancy ?? DASH,
+      camera_cuts: cameraUpperBound,
+      cuts_count: parseCutsCount(cameraUpperBound),
+      particle_level: tier?.particleLevel ?? DASH,
       has_3d: tier?.has3D ?? false,
       has_vibration: tier?.hasVibration ?? false,
       has_sound: tier?.hasSound ?? false,
@@ -171,89 +296,154 @@ export function buildComplianceRows(gifts) {
  */
 export function formatComplianceTable(rows) {
   if (rows.length === 0) {
-    return '运营文档中未识别到礼物信息。';
+    return '运营文案中未识别到礼物信息。';
   }
 
   const header = '| 礼物名称 | 价位 | 价效梯度 | 时长 | 镜头 | 粒子效果 | 3D | 震动 | 音效 |';
   const divider = '|---------|------|---------|------|------|---------|----|----|-----|';
-  const rowLines = rows.map((r) => {
-    const flag = (v) => (v ? '✓' : '—');
-    return `| ${r.name} | ${r.price_str} | ${r.tier_label} | ${r.duration} | ${r.camera_cuts} | ${r.particle_level} | ${flag(r.has_3d)} | ${flag(r.has_vibration)} | ${flag(r.has_sound)} |`;
+  const rowLines = rows.map((row) => {
+    const flag = (value) => (value ? '是' : '否');
+    return `| ${row.name} | ${row.price_str} | ${row.tier_label} | ${row.duration} | ${row.camera_cuts} | ${row.particle_level} | ${flag(row.has_3d)} | ${flag(row.has_vibration)} | ${flag(row.has_sound)} |`;
   });
 
   return [header, divider, ...rowLines].join('\n');
 }
 
-/**
- * Return the Feishu background-color name for a tier label.
- * Supported values: red, orange, yellow, green, blue, purple, gray
- */
-function tierBgColor(tierLabel) {
-  if (tierLabel === '头部8层' || tierLabel === '头部') return 'red';
-  if (tierLabel === '头部低') return 'orange';
-  if (tierLabel === '腰部高' || tierLabel === '腰部') return 'yellow';
-  if (tierLabel === '尾部高' || tierLabel === '尾部') return 'green';
-  return 'gray';
+function compactCameraLabel(cameraCuts) {
+  if (typeof cameraCuts === 'string' && cameraCuts.includes('≤')) {
+    return cameraCuts;
+  }
+  const cutsCount = parseCutsCount(cameraCuts ?? '');
+  if (cutsCount === '0') return '0';
+  if (/^\d+$/.test(cutsCount)) return cutsCount;
+  return cameraCuts ?? '0';
+}
+
+function compactHeaderLabel(row) {
+  return `${row.name}(${row.price_str})`;
+}
+
+function compactDurationValue(row) {
+  return row.duration;
+}
+
+function compactScreenOccupancyValue(row) {
+  return row.screen_occupancy;
+}
+
+function compactCameraValue(row) {
+  return compactCameraLabel(row.camera_cuts);
+}
+
+function designColumnWidths(columnCount) {
+  if (columnCount <= 0) {
+    return `${DESIGN_LABEL_COL_WIDTH},110`;
+  }
+
+  const giftColWidth = Math.max(
+    82,
+    Math.min(110, Math.floor((DESIGN_TABLE_TOTAL_WIDTH - DESIGN_LABEL_COL_WIDTH) / columnCount)),
+  );
+  return [DESIGN_LABEL_COL_WIDTH, ...Array.from({ length: columnCount }, () => giftColWidth)].join(',');
+}
+
+function td(content) {
+  return `<lark-td>\n\n${content}\n\n</lark-td>`;
+}
+
+function buildTableRow(label, cellContents) {
+  return [
+    '<lark-tr>',
+    td(label),
+    ...cellContents.map((content) => td(content)),
+    '</lark-tr>',
+  ].join('\n');
+}
+
+function normalizeThemeSummary(summary) {
+  if (typeof summary !== 'string') {
+    return '';
+  }
+  const normalized = summary.replace(/\s+/g, ' ').trim();
+  if (!normalized) {
+    return '';
+  }
+
+  const sentenceMatch = normalized.match(/^(.+?[。！？!?\n])/);
+  const firstSentence = sentenceMatch ? sentenceMatch[1].trim() : normalized;
+  return firstSentence.slice(0, 120);
+}
+
+function normalizeDesignDocMeta(docMeta) {
+  if (typeof docMeta === 'string') {
+    return {
+      opsDocLink: '',
+      themeSummary: normalizeThemeSummary(docMeta),
+    };
+  }
+
+  if (!docMeta || typeof docMeta !== 'object') {
+    return {
+      opsDocLink: '',
+      themeSummary: '',
+    };
+  }
+
+  return {
+    opsDocLink: typeof docMeta.opsDocLink === 'string' ? docMeta.opsDocLink.trim() : '',
+    themeSummary: normalizeThemeSummary(docMeta.themeSummary ?? docMeta.opsDocText),
+  };
+}
+
+function buildDesignDocIntro(docMeta) {
+  const normalized = normalizeDesignDocMeta(docMeta);
+  const lines = [];
+
+  if (normalized.opsDocLink) {
+    lines.push(`运营文档： ${normalized.opsDocLink}`);
+  }
+  if (normalized.themeSummary) {
+    lines.push(`主题概括： ${normalized.themeSummary}`);
+  }
+
+  return lines.join('\n');
 }
 
 /**
  * Build the full design document markdown using lark-table syntax:
- * ops doc content on top, then a design work table below.
- *
- * Auto-generated rows (价效 sub-block) have per-column background colors
- * matching the gift's price tier, using <text background-color="…"> inside
- * each <lark-td>. User-fillable rows are plain white.
- *
- * Column widths are computed dynamically so the table fills ~730 px.
+ * ops doc content on top, then a compact design work table below.
  */
 export function buildDesignDocMarkdown(opsDocContent, rows) {
-  const TOTAL_WIDTH = 730;
-  const LABEL_COL_WIDTH = 130;
-  const giftColWidth = Math.max(100, Math.floor((TOTAL_WIDTH - LABEL_COL_WIDTH) / rows.length));
-  const colWidths = [LABEL_COL_WIDTH, ...rows.map(() => giftColWidth)].join(',');
+  const intro = buildDesignDocIntro(opsDocContent);
+  const headerRow = buildTableRow(
+    '礼物名称',
+    rows.map((row) => compactHeaderLabel(row)),
+  );
 
-  const td = (content) => `<lark-td>\n\n${content}\n\n</lark-td>`;
-  const colorTd = (content, bgColor) => td(`<text background-color="${bgColor}">${content}</text>`);
+  const generatedRows = DESIGN_GROUP_ROW_DEFS.map((rowDef) =>
+    buildTableRow(
+      rowDef.label,
+      rows.map((row) => rowDef.formatter(row)),
+    ),
+  );
 
-  const headerRow = [
-    '<lark-tr>',
-    td('字段'),
-    ...rows.map((r) => td(`**${r.name}（${r.price_str}）**`)),
-    '</lark-tr>',
-  ].join('\n');
-
-  const autoRow = (label, values) => [
-    '<lark-tr>',
-    td(label),
-    ...rows.map((r, i) => colorTd(values[i], tierBgColor(r.tier_label))),
-    '</lark-tr>',
-  ].join('\n');
-
-  const emptyRow = (label) => [
-    '<lark-tr>',
-    td(label),
-    ...rows.map(() => td(' ')),
-    '</lark-tr>',
-  ].join('\n');
+  const editableRows = DESIGN_EDITABLE_ROW_LABELS.map((label) =>
+    buildTableRow(
+      label,
+      rows.map(() => ' '),
+    ),
+  );
 
   const table = [
-    `<lark-table column-widths="${colWidths}" header-row="true" header-column="true">`,
+    `<lark-table column-widths="${designColumnWidths(rows.length)}" header-row="true" header-column="true">`,
     headerRow,
-    autoRow('价效梯度', rows.map((r) => r.tier_label)),
-    autoRow('└ 时长', rows.map((r) => r.duration)),
-    autoRow('└ 镜头数', rows.map((r) => r.camera_cuts)),
-    autoRow('└ 切镜次数', rows.map((r) => r.cuts_count)),
-    emptyRow('关键帧设计'),
-    emptyRow('直播间背景展示'),
-    emptyRow('ICON预览'),
+    ...generatedRows,
+    ...editableRows,
     '</lark-table>',
   ].join('\n');
 
   return [
-    opsDocContent.trim(),
-    '',
-    '---',
-    '',
+    ...(intro ? [intro, '', '---', ''] : []),
     '## 设计工作表',
     '',
     table,
